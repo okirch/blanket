@@ -3,6 +3,7 @@
  */
 
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,7 +59,7 @@ sc_control_create(void)
 }
 
 int
-sc_control_write(const char *path, sc_control_t *ctl)
+sc_control_write(sc_control_t *ctl, const char *path)
 {
 	FILE *fp;
 
@@ -78,9 +79,25 @@ sc_control_write(const char *path, sc_control_t *ctl)
 }
 
 int
-sc_control_add_file(sc_control_t *ctx, const char *path)
+sc_control_add_file(sc_control_t *ctl, const char *path)
 {
-	return -1;
+	struct stat stb;
+	sc_control_entry_t *entry;
+
+	if (stat(path, &stb) < 0) {
+		fprintf(stderr, "could not add %s: %s\n", path);
+		return -1;
+	}
+
+	if (ctl->num_entries >= SC_CONTROL_MAX_ENTRIES) {
+		fprintf(stderr, "could not add %s: too many entries in control file\n", path);
+		return -1;
+	}
+
+	entry = &ctl->entry[ctl->num_entries++];
+	entry->dev = stb.st_dev;
+	entry->ino = stb.st_ino;
+	return 0;
 }
 
 int
