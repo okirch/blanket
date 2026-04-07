@@ -50,12 +50,13 @@ sc_control_read(const char *path)
 sc_control_t *
 sc_control_create(void)
 {
-	sc_control_t *ctx;
+	sc_control_t *ctl;
 
-	ctx = calloc(1, sizeof(*ctx));
-	ctx->format = SC_CONTROL_FILE_VERSION;
-	ctx->granularity = SC_DEFAULT_GRANULARITY;
-	return ctx;
+	ctl = calloc(1, sizeof(*ctl));
+	ctl->format = SC_CONTROL_FILE_VERSION;
+	ctl->granularity = SC_DEFAULT_GRANULARITY;
+	ctl->addr_shift = ffsl(ctl->granularity);
+	return ctl;
 }
 
 int
@@ -85,7 +86,7 @@ sc_control_add_file(sc_control_t *ctl, const char *path)
 	sc_control_entry_t *entry;
 
 	if (stat(path, &stb) < 0) {
-		fprintf(stderr, "could not add %s: %s\n", path);
+		fprintf(stderr, "could not add %s: %m\n", path);
 		return -1;
 	}
 

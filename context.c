@@ -1,5 +1,5 @@
 /*
- * In-memory tracking of ELF objects.
+ * Manage the tracking context during analysis.
  */
 
 #include <sys/types.h>
@@ -29,135 +29,24 @@ sc_context_init(const sc_control_t *ctl)
 	sc_context = calloc(1, sizeof(*sc_context));
 	sc_context->control = ctl;
 	sc_context->granularity = ctl->granularity;
+	sc_context->addr_shift = ctl->addr_shift;
 	sc_context->test_id = ctl->test_id;
 
 	return sc_context;
-}
-
-/*
- * Clone an object entry
- */
-static sc_object_entry_t *
-sc_object_entry_clone(const sc_object_entry_t *entry)
-{
-	sc_object_entry_t *e;
-
-	e = calloc(1, sizeof(*e));
-	e->dev = entry->dev;
-	e->ino = entry->ino;
-	e->start_addr = entry->start_addr;
-	e->end_addr = entry->end_addr;
-
-	if (entry->path != NULL)
-		e->path = strdup(entry->path);
-	return e;
-}
-
-static void
-sc_object_entry_populate_header(const sc_object_entry_t *entry)
-{
-	sc_output_header_t *hdr = entry->map_base;
-
-	if (!hdr)
-		return;
-
-	hdr->format = SC_CONTROL_FILE_VERSION;
-	hdr->dev = entry->dev;
-	hdr->ino = entry->ino;
-
-	gettimeofday(&hdr->timestamp, NULL);
-	strncpy(hdr->path, entry->path, sizeof(hdr->path) - 1);
-}
-
-static void
-sc_object_entry_free(sc_object_entry_t *entry)
-{
-	if (sc_tracing)
-		printf("sc_object_entry_free(%s)\n", entry->path);
-
-	if (entry->path != NULL)
-		free(entry->path);
-	if (entry->map_base)
-		munmap(entry->map_base, entry->map_len);
-	free(entry);
-}
-
-static int
-sc_context_map_open(const sc_context_t *ctx, const sc_object_entry_t *entry)
-{
-	static int pid_wraparound = 0;
-	static pid_t last_pid = 0;
-	char namebuf[256];
-	time_t now = time(NULL);
-	pid_t pid = getpid();
-
-	if (pid < last_pid)
-		pid_wraparound += 1;
-	last_pid = pid;
-
-	snprintf(namebuf, sizeof(namebuf), "/tmp/coverage-%04x:%08lx-%d:%ld-%lu.map",
-			entry->dev, (long) entry->ino,
-			pid_wraparound, (long) pid,
-			(long) now);
-
-	return open(namebuf, O_CREAT|O_RDWR, 0600);
-}
-
-static void *
-sc_context_map_output(const sc_context_t *ctx, sc_object_entry_t *entry)
-{
-	unsigned int granularity = ctx->granularity;
-	unsigned long num_counters, map_len;
-	int fd;
-
-	if (granularity == 0 || (granularity & (granularity - 1)))
-		return NULL; /* shouldn't happen */
-	entry->addr_shift = ffsl(granularity);
-
-	if (entry->end_addr <= entry->start_addr)
-		return NULL; /* shouldn't happen either */
-
-	num_counters = (entry->end_addr - entry->start_addr + granularity - 1) >> entry->addr_shift;
-	map_len = SC_OUTPUT_HEADER_SIZE + sizeof(entry->counters[0]) * num_counters;
-
-	if ((fd = sc_context_map_open(ctx, entry)) < 0)
-		return NULL;
-
-	if (ftruncate(fd, map_len) < 0) {
-		close(fd);
-		return NULL;
-	}
-
-	entry->map_base = mmap(NULL, map_len, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-	close(fd);
-
-	if (entry->map_base == NULL)
-		return NULL;
-
-	entry->counters = (uint32_t *) (entry->map_base + SC_OUTPUT_HEADER_SIZE);
-	entry->map_len = map_len;
-	entry->num_counters = num_counters;
-
-	sc_object_entry_populate_header(entry);
-
-	return entry->map_base;
 }
 
 static void
 sc_context_enable_object(const sc_context_t *ctx, sc_object_entry_t *entry)
 {
 	if (!(entry->flags & SC_CONTEXT_ACTIVE_F)) {
-		if (sc_context_map_output(ctx, entry)) {
+		memcpy(entry->magic, entry->start_addr, 8);
+		entry->addr_shift = ctx->addr_shift;
+		if (sc_object_entry_map_write(entry)) {
 			if (sc_tracing)
-				printf("Enabled %s; granularity %u\n", entry->path, ctx->granularity);
+				printf("Enabled %s; granularity %u; addr_shift %u\n", entry->path, ctx->granularity, entry->addr_shift);
 			entry->flags |= SC_CONTEXT_ACTIVE_F;
 		}
 	}
-}
-
-static void
-sc_object_entry_flush(sc_object_entry_t *entry)
-{
 }
 
 /*
@@ -240,8 +129,13 @@ sc_context_rescan(void)
 	if (!(mapfp = sc_procfs_maps_open()))
 		return 0;
 
-	while ((map_entry = sc_procfs_maps_getent(mapfp)) != NULL)
+	while ((map_entry = sc_procfs_maps_getent(mapfp)) != NULL) {
+		/* ignore [vdso] */
+		if (map_entry->path[0] == '[')
+			continue;
+
 		sc_context_update_mapping(ctx, map_entry);
+	}
 
 	sc_procfs_fclose(mapfp);
 
@@ -261,3 +155,43 @@ sc_context_rescan(void)
 
 	return 1;
 }
+
+void
+sc_context_add_sample(sc_context_t *ctx, caddr_t addr)
+{
+	unsigned int i, i0 = 0, i1 = ctx->num_entries;
+	sc_object_entry_t *entry;
+	unsigned int n;
+
+	while (i0 + 1 < i1) {
+		i = (i0 + i1) / 2;
+		entry = ctx->entries[i];
+		if (addr < entry->start_addr) {
+			i1 = i;
+		} else if (entry->end_addr < addr) {
+			i0 = i;
+		} else {
+			goto use_entry;
+		}
+	}
+
+	while (i0 < i1) {
+		entry = ctx->entries[i0++];
+		if (entry->start_addr <= addr && addr < entry->end_addr)
+			goto use_entry;
+	}
+	return;
+
+use_entry:
+	if (0) {
+		char foo[256];
+		snprintf(foo, sizeof(foo), "%p %s\n", addr, entry->path);
+		write(2, foo, strlen(foo));
+	}
+	n = (addr - entry->start_addr) >> entry->addr_shift;
+
+	/* the condition should always be true, but better safe than sorry. */
+	if (n < entry->num_counters)
+		entry->counters[n] += 1;
+}
+
