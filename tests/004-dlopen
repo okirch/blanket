@@ -1,0 +1,43 @@
+#!/bin/bash
+
+TMPDIR=$(mktemp -d /tmp/test.XXXXXX)
+trap "rm -rf $TMPDIR" 0
+
+export BLANKET_CONTROL=$TMPDIR/blanket.conf
+set -e
+
+./blanket init
+./blanket add /lib64/libm.so.6
+
+echo "*** configuration"
+./blanket show
+echo
+
+echo "*** running test command"
+rm -f /tmp/coverage-*
+export LD_PRELOAD=$PWD/libblanket.so
+./tests/dlopen
+echo
+
+echo "*** report"
+./blanket report /tmp/coverage-*
+echo
+
+found=$TMPDIR/found
+./blanket report /tmp/coverage-* | while read a b c; do
+	case "$b" in
+	*sqrt*)
+		trunc=$(expr "$a" : '\(.*\)\..*')
+		if [ -n "$trunc" -a "$trunc" -gt 10 ]; then
+			touch $found
+		else
+			echo "*** symbol $b has only $a coverage" >&2
+		fi
+	esac
+done
+
+if [ -e $found ]; then
+	echo "Good, it seems we detected coverage of both threads"
+else
+	echo "Did not detect coverage of sqrt"
+fi

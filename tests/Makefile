@@ -1,11 +1,14 @@
 
 CFLAGS = -falign-functions=256 -Wall -g
-UTILS	= threads
+UTILS	= threads dlopen
 
 all:	$(UTILS)
 
 clean:
 	rm -f *.o $(UTILS)
+
+dlopen: dlopen.o
+	$(CC) -o $@ dlopen.o -ldl
 
 threads: threads.o
 	$(CC) -o $@ threads.o -lpthread -lm

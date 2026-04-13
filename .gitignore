@@ -3,5 +3,6 @@
 *.swp
 tdl
 tests/threads
+tests/dlopen
 blanket
 blanket.conf

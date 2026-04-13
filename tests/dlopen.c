@@ -5,11 +5,25 @@
 
 #include <dlfcn.h>
 #include <stdio.h>
+#include <time.h>
 
-int main(void)
+static double
+elapsed(void)
+{
+	static double t0 = 0;
+
+	if (t0 == 0)
+		t0 = time(NULL);
+	return time(NULL) - t0;
+}
+
+int
+main(void)
 {
 	void *h;
 	double (*sqrt)(double);
+	unsigned int i, j;
+	double accum;
 
 	h = dlopen("/lib64/libm.so.6", RTLD_LAZY);
 	if (h == NULL) {
@@ -23,6 +37,10 @@ int main(void)
 		return 1;
 	}
 
-	printf("sqrt(4)=%f\n", sqrt(4));
-	return 0;
+	for (i = 0, accum = 0; elapsed() < 2; ) {
+		for (j = 0; j < 1000; ++i, ++j)
+			accum += sqrt((double) i);
+	}
+
+	return (accum == 0);
 }
