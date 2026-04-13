@@ -414,14 +414,17 @@ sc_elf_object_extract_symbols(const sc_elf_object_t *object, sc_coverage_t *cove
 {
 	sc_elf_section_t *section;
 	sc_elf_symbol_t *elfsym;
+	unsigned long reloc;
 	unsigned int i;
 
 	if (!(section = sc_elf_object_get_section(object, section_name)))
 		return;
 
+	reloc = section->hdr.sh_addr - section->hdr.sh_offset;
+
 	for (i = 0, elfsym = object->symbol; i < object->nsymbols; ++i, ++elfsym) {
 		if (elfsym->sym.st_shndx == section->index)
-			sc_coverage_add_symbol(coverage, elfsym->name, elfsym->sym.st_value, elfsym->sym.st_size);
+			sc_coverage_add_symbol(coverage, elfsym->name, elfsym->sym.st_value - reloc, elfsym->sym.st_size);
 	}
 
 	coverage->text_offset = section->hdr.sh_offset;

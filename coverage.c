@@ -36,6 +36,7 @@ sc_coverage_add_symbol(sc_coverage_t *coverage, const char *name, unsigned long 
 	sym->name = name;
 	sym->start_offset = offset;
 	sym->end_offset = offset + size;
+	// printf("%08lx - %08lx %s\n", sym->start_offset, sym->end_offset, name);
 }
 
 static inline bool
@@ -44,7 +45,7 @@ sc_symbol_covers(const sc_symbol_t *sym, unsigned long offset)
 	return (sym->start_offset <= offset && offset < sym->end_offset);
 }
 
-sc_symbol_t *
+static sc_symbol_t *
 sc_coverage_find_symbol(sc_coverage_t *coverage, unsigned long offset)
 {
 	unsigned int i0, i1, i;
