@@ -13,6 +13,7 @@
 #include "blanket.h"
 
 static int		sc_sampling_enabled = 0;
+static __thread int	sc_sampling_active_for_thread;
 
 static void		sc_sampling_interrupt(int, siginfo_t *, void *);
 
@@ -20,10 +21,6 @@ static void		sc_sampling_interrupt(int, siginfo_t *, void *);
 int
 sc_sampling_enable(void)
 {
-	sigset_t sigset;
-	struct sigaction act;
-	struct itimerval itimer;
-
 	if (sc_context == NULL)
 		return -1;
 
@@ -31,6 +28,15 @@ sc_sampling_enable(void)
 		return 0;
 
 	sc_sampling_enabled = 1;
+	sc_sampling_activate_thread();
+	return 0;
+}
+
+static void
+sc_sampling_set_signal_handler(void)
+{
+	sigset_t sigset;
+	struct sigaction act;
 
 	sigemptyset(&sigset);
 	sigaddset(&sigset, SIGALRM);
@@ -41,12 +47,35 @@ sc_sampling_enable(void)
 	act.sa_sigaction = sc_sampling_interrupt;
 	act.sa_flags = SA_SIGINFO | SA_RESTART;
 	sigaction(SIGVTALRM, &act, NULL);
+}
+
+static void
+sc_sampling_set_timer(void)
+{
+	struct itimerval itimer;
+
 
 	memset(&itimer, 0, sizeof(itimer));
 	itimer.it_interval.tv_usec = 1;
 	itimer.it_value = itimer.it_interval;
 
 	setitimer(ITIMER_VIRTUAL, &itimer, NULL);
+}
+
+void
+sc_sampling_activate_thread(void)
+{
+	if (!sc_sampling_enabled) {
+		printf("Sampling not enabled\n");
+		return;
+	}
+
+	if (sc_sampling_active_for_thread)
+		return;
+	sc_sampling_active_for_thread = 1;
+
+	sc_sampling_set_signal_handler();
+	sc_sampling_set_timer();
 }
 
 void

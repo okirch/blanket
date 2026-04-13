@@ -158,6 +158,7 @@ extern void *			sc_object_entry_map_write(sc_object_entry_t *entry);
 extern void			sc_object_entry_flush(sc_object_entry_t *entry);
 extern sc_object_entry_t *	sc_object_entry_load(const char *path);
 
+extern void			sc_sampling_activate_thread(void);
 extern int			sc_sampling_enable(void);
 
 /* Functions related to handling ELF objects */
