@@ -132,7 +132,7 @@ do_update(void)
 	sc_control_t *ctl;
 
 	if (!(ctl = sc_control_read())) {
-		fprintf(stderr, "Could not read control file: %m\n");
+		fprintf(stderr, "Unable to read control file\n");
 		exit(1);
 	}
 
@@ -146,7 +146,7 @@ do_add(int nfiles, char **files)
 	int i, okay = 1;
 
 	if (!(ctl = sc_control_read())) {
-		fprintf(stderr, "Could not read control file: %m\n");
+		fprintf(stderr, "Unable to read control file\n");
 		exit(1);
 	}
 
@@ -172,7 +172,7 @@ do_show(void)
 	unsigned int i;
 
 	if (!(ctl = sc_control_read())) {
-		fprintf(stderr, "Could not read control file: %m\n");
+		fprintf(stderr, "Unable to read control file\n");
 		exit(1);
 	}
 

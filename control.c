@@ -23,28 +23,56 @@ sc_control_set_path(const char *path)
 	sc_control_path = path;
 }
 
-sc_control_t *
-sc_control_read(void)
+static sc_control_t *
+__sc_control_read(int quiet)
 {
 	sc_control_t *ctl;
 	FILE *fp;
 
 	if (sc_control_path == NULL) {
-		fprintf(stderr, "Cannot read control file: no path\n");
+		if (!quiet)
+			fprintf(stderr, "Cannot read control file: no path\n");
 		return NULL;
 	}
 
-	if (!(fp = fopen(sc_control_path, "r")))
+	if (!(fp = fopen(sc_control_path, "r"))) {
+		if (!quiet)
+			fprintf(stderr, "Could not read control file %s: %m\n",
+					sc_control_path);
 		return NULL;
+	}
 
 	ctl = calloc(1, sizeof(*ctl));
 	(void) fread(ctl, sizeof(*ctl), 1, fp);
 	fclose(fp);
 
-	if (ctl->granularity != (1 << ctl->addr_shift))
+	if (ctl->granularity != (1 << ctl->addr_shift)) {
+		if (!quiet)
+			fprintf(stderr, "%s: address shift %u does not match granularity %u\n",
+					sc_control_path, ctl->addr_shift, ctl->granularity);
 		return NULL; /* mismatch */
+	}
+
+	if (ctl->format != SC_CONTROL_FILE_VERSION) {
+		if (!quiet)
+			fprintf(stderr, "%s: file format mismatch; I support %04x, found %04x\n",
+					sc_control_path, SC_CONTROL_FILE_VERSION, ctl->format);
+		return NULL; /* mismatch */
+	}
 
 	return ctl;
+}
+
+sc_control_t *
+sc_control_read(void)
+{
+	return __sc_control_read(0);
+}
+
+sc_control_t *
+sc_control_read_quiet(void)
+{
+	return __sc_control_read(1);
 }
 
 sc_control_t *

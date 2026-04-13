@@ -49,7 +49,7 @@ pre_main_hook(void)
 	if (do_all) {
 		ctl = sc_control_create();
 		ctl->measure_all = 1;
-	} else if (!(ctl = sc_control_read())) {
+	} else if (!(ctl = sc_control_read_quiet())) {
 		return;
 	}
 

@@ -142,6 +142,7 @@ extern sc_context_t *		sc_context;
 extern void			sc_control_set_path(const char *path);
 extern sc_control_t *		sc_control_create(void);
 extern sc_control_t *		sc_control_read(void);
+extern sc_control_t *		sc_control_read_quiet(void);
 extern int			sc_control_write(sc_control_t *ctl);
 extern int			sc_control_add_file(sc_control_t *, const char *path);
 extern int			sc_control_add_dev_ino(sc_control_t *, dev_t dev, ino_t ino);
