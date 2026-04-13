@@ -41,10 +41,8 @@ sc_control_read(void)
 	(void) fread(ctl, sizeof(*ctl), 1, fp);
 	fclose(fp);
 
-	if (ctl->granularity & (ctl->granularity - 1))
-		return NULL; /* granularity not a power of 2 */
-
-	ctl->addr_shift = ffsl(ctl->granularity);
+	if (ctl->granularity != (1 << ctl->addr_shift))
+		return NULL; /* mismatch */
 
 	return ctl;
 }
