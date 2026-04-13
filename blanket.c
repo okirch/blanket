@@ -77,6 +77,9 @@ main(int argc, char **argv)
 		}
 	}
 
+	sc_control_set_path(opt_control_path);
+	printf("Using control file %s\n", sc_control_path);
+
 	cmd = require_arg("command", argc, argv);
 	if (!strcmp(cmd, "init")) {
 		do_init();
@@ -107,7 +110,7 @@ update_and_write_control(sc_control_t *ctl)
 	if (opt_test_id >= 0)
 		ctl->test_id = opt_test_id;
 
-	if (sc_control_write(ctl, opt_control_path) < 0)
+	if (sc_control_write(ctl) < 0)
 		exit(1);
 }
 
@@ -125,7 +128,7 @@ do_update(void)
 {
 	sc_control_t *ctl;
 
-	if (!(ctl = sc_control_read(opt_control_path))) {
+	if (!(ctl = sc_control_read())) {
 		fprintf(stderr, "Could not read control file: %m\n");
 		exit(1);
 	}
@@ -139,7 +142,7 @@ do_add(int nfiles, char **files)
 	sc_control_t *ctl;
 	int i, okay = 1;
 
-	if (!(ctl = sc_control_read(opt_control_path))) {
+	if (!(ctl = sc_control_read())) {
 		fprintf(stderr, "Could not read control file: %m\n");
 		exit(1);
 	}

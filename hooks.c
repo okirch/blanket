@@ -30,12 +30,14 @@ static void
 pre_main_hook(void)
 {
 	sc_control_t *ctl;
-	const char *path;
 	int do_all;
+
+	/* Set the control path from environment (if present); else use
+	 * default path. */
+	sc_control_set_path(NULL);
 
 	sc_tracing = sc_getenv_int("BLANKET_TRACE");
 	do_all = sc_getenv_int("BLANKET_MEASURE_ALL");
-	path = getenv("BLANKET_CONTROL");
 
 	if (sc_tracing)
 		printf("Hook called before main()\n");
@@ -43,7 +45,7 @@ pre_main_hook(void)
 	if (do_all) {
 		ctl = sc_control_create();
 		ctl->measure_all = 1;
-	} else if (!(ctl = sc_control_read(path))) {
+	} else if (!(ctl = sc_control_read())) {
 		return;
 	}
 

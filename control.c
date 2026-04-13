@@ -10,20 +10,31 @@
 
 #include "blanket.h"
 
-const char *	sc_control_path;
+const char *	sc_control_path = SC_CONTROL_PATH_DEFAULT;
+
+void
+sc_control_set_path(const char *path)
+{
+	if (path == NULL)
+		path = secure_getenv("BLANKET_CONTROL");
+	if (path == NULL)
+		path = SC_CONTROL_PATH_DEFAULT;
+
+	sc_control_path = path;
+}
 
 sc_control_t *
-sc_control_read(const char *path)
+sc_control_read(void)
 {
 	sc_control_t *ctl;
 	FILE *fp;
 
-	if (path == NULL)
-		path = sc_control_path;
-	if (path == NULL)
-		path = SC_CONTROL_PATH_DEFAULT;
+	if (sc_control_path == NULL) {
+		fprintf(stderr, "Cannot read control file: no path\n");
+		return NULL;
+	}
 
-	if (!(fp = fopen(path, "r")))
+	if (!(fp = fopen(sc_control_path, "r")))
 		return NULL;
 
 	ctl = calloc(1, sizeof(*ctl));
@@ -55,22 +66,22 @@ sc_control_create(void)
 	ctl = calloc(1, sizeof(*ctl));
 	ctl->format = SC_CONTROL_FILE_VERSION;
 	ctl->granularity = SC_DEFAULT_GRANULARITY;
-	ctl->addr_shift = ffsl(ctl->granularity);
+	ctl->addr_shift = ffsl(ctl->granularity) - 1;
 	return ctl;
 }
 
 int
-sc_control_write(sc_control_t *ctl, const char *path)
+sc_control_write(sc_control_t *ctl)
 {
 	FILE *fp;
 
-	if (path == NULL)
-		path = sc_control_path;
-	if (path == NULL)
-		path = SC_CONTROL_PATH_DEFAULT;
+	if (sc_control_path == NULL) {
+		fprintf(stderr, "Cannot write control file: no path\n");
+		return -1;
+	}
 
-	if (!(fp = fopen(path, "w"))) {
-		fprintf(stderr, "Cannot write control file %s: %m\n", path);
+	if (!(fp = fopen(sc_control_path, "w"))) {
+		fprintf(stderr, "Cannot write control file %s: %m\n", sc_control_path);
 		return -1;
 	}
 
