@@ -87,9 +87,14 @@ sc_context_update_mapping(sc_context_t *ctx, const sc_object_entry_t *entry)
 	unsigned int i;
 
 	/* Check if we're interested in tracing this */
-	if (!ctl->measure_all
-	 && !sc_control_get_entry(ctl, entry->dev, entry->ino, entry->path)) {
-		// printf("Ignore %s\n", entry->path);
+	if (ctl->measure_all) {
+		if (sc_tracing)
+			printf("Tracing all objects\n");
+	} else
+	if (sc_control_get_entry(ctl, entry->dev, entry->ino, entry->path)) {
+		if (sc_tracing)
+			printf("Tracking %s\n", entry->path);
+	} else {
 		return;
 	}
 
