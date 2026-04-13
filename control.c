@@ -41,15 +41,6 @@ sc_control_read(void)
 	(void) fread(ctl, sizeof(*ctl), 1, fp);
 	fclose(fp);
 
-	{
-		/* /bin/bash on my system */
-		sc_control_add_dev_ino(ctl, 0x28, 254134);
-		/* libc on my system */
-		sc_control_add_dev_ino(ctl, 0x28, 409014);
-		/* libm on my system */
-		sc_control_add_dev_ino(ctl, 0x28, 409017);
-	}
-
 	if (ctl->granularity & (ctl->granularity - 1))
 		return NULL; /* granularity not a power of 2 */
 
