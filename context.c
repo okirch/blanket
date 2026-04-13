@@ -194,11 +194,15 @@ sc_context_add_sample(sc_context_t *ctx, caddr_t addr)
 	return;
 
 use_entry:
-	if (0) {
-		char foo[256];
-		snprintf(foo, sizeof(foo), "%p %s\n", addr, entry->path);
-		write(2, foo, strlen(foo));
-	}
+	/* Note, the counter updates are not atomic; so in a multithreaded
+	 * application, there will be race conditions. However, as we do not
+	 * care about the exact set of hits per address at the end of the day,
+	 * this hopefully does not matter.
+	 *
+	 * If we ever change the sampling code to be just a bit field, where
+	 * each bit reprents one memory bucket, then we need to start worrying
+	 * about atomic updates.
+	 */
 	n = (addr - entry->start_addr) >> entry->addr_shift;
 
 	/* the condition should always be true, but better safe than sorry. */
