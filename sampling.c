@@ -40,17 +40,13 @@ sc_sampling_enable(void)
 	memset(&act, 0, sizeof(act));
 	act.sa_sigaction = sc_sampling_interrupt;
 	act.sa_flags = SA_SIGINFO | SA_RESTART;
-	sigaction(SIGALRM, &act, NULL);
+	sigaction(SIGVTALRM, &act, NULL);
 
 	memset(&itimer, 0, sizeof(itimer));
 	itimer.it_interval.tv_usec = 1;
 	itimer.it_value = itimer.it_interval;
 
-	printf("Enable timer\n");
-	setitimer(ITIMER_REAL, &itimer, NULL);
-	sleep(1);
-
-	return 0;
+	setitimer(ITIMER_VIRTUAL, &itimer, NULL);
 }
 
 void
