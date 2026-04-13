@@ -19,6 +19,8 @@
 
 sc_context_t *			sc_context = NULL;
 
+static __thread sc_object_entry_t *sc_last_object;
+
 sc_context_t *
 sc_context_init(const sc_control_t *ctl)
 {
@@ -168,6 +170,10 @@ sc_context_add_sample(sc_context_t *ctx, caddr_t addr)
 	sc_object_entry_t *entry;
 	unsigned int n;
 
+	if ((entry = sc_last_object) != NULL
+	 && entry->start_addr <= addr && addr < entry->end_addr)
+		goto use_entry;
+
 	while (i0 + 1 < i1) {
 		i = (i0 + i1) / 2;
 		entry = ctx->entries[i];
@@ -198,5 +204,7 @@ use_entry:
 	/* the condition should always be true, but better safe than sorry. */
 	if (n < entry->num_counters)
 		entry->counters[n] += 1;
+
+	sc_last_object = entry;
 }
 
