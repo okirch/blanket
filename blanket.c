@@ -8,9 +8,10 @@
 #include <string.h>
 #include "blanket.h"
 
-static void		do_init();
-static void		do_update();
+static void		do_init(void);
+static void		do_update(void);
 static void		do_add(int nfiles, char **files);
+static void		do_show(void);
 static void		do_report(int nfiles, char **files);
 static const char *	require_arg(const char *, int argc, char **argv);
 static void		usage(int);
@@ -87,6 +88,8 @@ main(int argc, char **argv)
 		do_update();
 	} else if (!strcmp(cmd, "add")) {
 		do_add(argc - optind, argv + optind);
+	} else if (!strcmp(cmd, "show")) {
+		do_show();
 	} else if (!strcmp(cmd, "report")) {
 		do_report(argc - optind, argv + optind);
 	} else {
@@ -160,6 +163,35 @@ do_add(int nfiles, char **files)
 		exit(1);
 
 	update_and_write_control(ctl);
+}
+
+void
+do_show(void)
+{
+	sc_control_t *ctl;
+	unsigned int i;
+
+	if (!(ctl = sc_control_read())) {
+		fprintf(stderr, "Could not read control file: %m\n");
+		exit(1);
+	}
+
+	printf("Test ID:              %2u\n", ctl->test_id);
+	printf("Address granularity:  %2u\n", ctl->granularity);
+	printf("Address shift:        %2u%s\n", ctl->addr_shift,
+					(ctl->granularity == (1 << ctl->addr_shift)? "": " (Should be log2(granularity)!!!)"));
+	printf("Measure all:          %s\n",
+					(ctl->measure_all)? "yes" : "no");
+	if (ctl->num_entries == 0) {
+		printf("No object entries\n");
+	} else {
+		printf("%u object entries\n", ctl->num_entries);
+		for (i = 0; i < ctl->num_entries; ++i) {
+			sc_control_entry_t *entry = &ctl->entry[i];
+
+			printf("Entry %2u:    dev %04x ino %08lu\n", i, (unsigned int) entry->dev, (unsigned long) entry->ino);
+		}
+	}
 }
 
 static int
