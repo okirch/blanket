@@ -1,0 +1,43 @@
+#!/bin/bash
+
+TMPDIR=$(mktemp -d /tmp/test.XXXXXX)
+trap "rm -vrf $TMPDIR" 0
+
+export BLANKET_CONTROL=$TMPDIR/blanket.conf
+set -e
+
+./blanket init
+./blanket add /usr/bin/sha256sum
+
+echo "*** configuration"
+./blanket show
+echo
+
+echo "*** running test command"
+rm -f /tmp/coverage-*
+export LD_PRELOAD=$PWD/libblanket.so
+dd if=/dev/urandom bs=1024k count=512 | sha256sum -
+echo
+
+echo "*** report"
+./blanket report /tmp/coverage-*
+echo
+
+found=$TMPDIR/found
+./blanket report /tmp/coverage-* | while read a b c; do
+	case "$b" in
+	sha256*)
+		trunc=$(expr "$a" : '\(.*\)\..*')
+		if [ -n "$trunc" -a "$trunc" -gt 10 ]; then
+			touch $found
+		else
+			echo "*** symbol $b has only $a coverage" >&2
+		fi
+	esac
+done
+
+if [ -e $found ]; then
+	echo "Good, it seems we detected coverage of a sha256 symbol"
+else
+	echo "Did not detect coverage of a sha256 symbol - maybe debuginfo pkg is missing?"
+fi

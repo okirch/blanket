@@ -1,0 +1,30 @@
+#!/bin/bash
+
+TMPDIR=$(mktemp -d /tmp/test.XXXXXX)
+trap "rm -vrf $TMPDIR" 0
+
+export BLANKET_CONTROL=$PWD/blanket.conf
+set -e
+
+./blanket init
+./blanket add /usr/bin/sleep
+
+echo "*** configuration"
+./blanket show
+echo
+
+echo "*** running test command"
+rm -f /tmp/coverage-*
+export LD_PRELOAD=$PWD/libblanket.so
+slept=$(/usr/bin/time -f %e sleep 1)
+echo "*** command slept for $slept seconds"
+echo
+
+echo "*** report"
+./blanket report /tmp/coverage-*
+echo
+
+case $slept in
+1*)	echo "Good, it seems we did not interrupt the sleep() system call";;
+*)	echo "Ouch, it seems sampling interferes with the sleep() system call";;
+esac

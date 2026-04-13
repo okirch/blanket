@@ -1,0 +1,43 @@
+#!/bin/bash
+
+TMPDIR=$(mktemp -d /tmp/test.XXXXXX)
+trap "rm -rf $TMPDIR" 0
+
+export BLANKET_CONTROL=$TMPDIR/blanket.conf
+set -e
+
+./blanket init
+./blanket add ./tests/threads
+
+echo "*** configuration"
+./blanket show
+echo
+
+echo "*** running test command"
+rm -f /tmp/coverage-*
+export LD_PRELOAD=$PWD/libblanket.so
+./tests/threads
+echo
+
+echo "*** report"
+./blanket report /tmp/coverage-*
+echo
+
+found=$TMPDIR/found
+./blanket report /tmp/coverage-* | while read a b c; do
+	case "$b" in
+	function[12])
+		trunc=$(expr "$a" : '\(.*\)\..*')
+		if [ -n "$trunc" -a "$trunc" -gt 10 ]; then
+			touch $TMPDIR/$b
+		else
+			echo "*** symbol $b has only $a coverage" >&2
+		fi
+	esac
+done
+
+if [ -e $TMPDIR/function1 -a -e $TMPDIR/function2 ]; then
+	echo "Good, it seems we detected coverage of both threads"
+else
+	echo "Did not detect coverage of thread functions"
+fi

@@ -2,5 +2,6 @@
 *.so
 *.swp
 tdl
+tests/threads
 blanket
 blanket.conf
