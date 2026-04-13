@@ -158,7 +158,7 @@ sc_context_rescan(void)
 
 	ctx->num_entries = j;
 
-	return 1;
+	return ctx->num_entries;
 }
 
 void
