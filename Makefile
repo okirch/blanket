@@ -17,3 +17,20 @@ libblanket.so: $(LIBOBJS)
 
 blanket: $(UTILOBJS)
 	$(CC) $(CCFLAGS) -o $@ $(UTILOBJS) $(LIBS)
+
+depend:
+	sed -e '/^## Automated/,$$d' Makefile > Makefile.tmp
+	echo "## Automated dependencies: ##" >>Makefile.tmp
+	gcc -MM *.c >>Makefile.tmp
+	mv Makefile.tmp Makefile
+
+## Automated dependencies: ##
+blanket.o: blanket.c blanket.h
+context.o: context.c blanket.h
+control.o: control.c blanket.h
+coverage.o: coverage.c blanket.h
+elf.o: elf.c blanket.h
+hooks.o: hooks.c blanket.h
+kernel.o: kernel.c blanket.h
+object.o: object.c blanket.h
+sampling.o: sampling.c blanket.h
