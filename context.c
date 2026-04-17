@@ -30,10 +30,6 @@ sc_context_init(const sc_control_t *ctl)
 
 	sc_context = calloc(1, sizeof(*sc_context));
 	sc_context->control = ctl;
-	sc_context->mode = ctl->mode;
-	sc_context->granularity = ctl->granularity;
-	sc_context->addr_shift = ctl->addr_shift;
-	sc_context->test_id = ctl->test_id;
 
 	return sc_context;
 }
@@ -43,10 +39,13 @@ sc_context_enable_object(const sc_context_t *ctx, sc_object_entry_t *entry)
 {
 	if (!(entry->flags & SC_CONTEXT_ACTIVE_F)) {
 		memcpy(entry->magic, entry->start_addr, 8);
-		entry->addr_shift = ctx->addr_shift;
+		entry->addr_shift = sc_context_get_addr_shift(ctx);
+		entry->test_id = sc_context_get_test_id(ctx);
 		if (sc_object_entry_map_write(entry)) {
 			if (sc_tracing)
-				printf("Enabled %s; granularity %u; addr_shift %u\n", entry->path, ctx->granularity, entry->addr_shift);
+				printf("Enabled %s; granularity %u; addr_shift %u\n", entry->path,
+						sc_context_get_granularity(ctx),
+						entry->addr_shift);
 			entry->flags |= SC_CONTEXT_ACTIVE_F;
 		}
 	}
@@ -80,7 +79,7 @@ sc_context_add_entry(sc_context_t *ctx, sc_object_entry_t *entry)
 	ctx->num_entries += 1;
 
 	/* printf("Inserted %s at pos %u\n", entry->path, where); */
-	entry->mode = ctx->mode;
+	entry->mode = sc_context_get_mode(ctx);
 	entry->flags |= SC_CONTEXT_SEEN_F;
 }
 

@@ -82,6 +82,7 @@ sc_control_create(void)
 
 	ctl = calloc(1, sizeof(*ctl));
 	ctl->format = SC_CONTROL_FILE_VERSION;
+	ctl->mode = SC_MODE_TIMER;
 	ctl->granularity = SC_DEFAULT_GRANULARITY;
 	ctl->addr_shift = ffsl(ctl->granularity) - 1;
 	return ctl;

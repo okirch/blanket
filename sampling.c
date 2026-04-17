@@ -29,9 +29,9 @@ sc_sampling_enable(const sc_context_t *ctx)
 	if (sc_sampling_enabled >= 0)
 		return 0;
 
-	sc_sampling_enabled = ctx->mode;
+	sc_sampling_enabled = sc_context_get_mode(ctx);
 
-	switch (ctx->mode) {
+	switch (sc_context_get_mode(ctx)) {
 	case SC_MODE_TIMER:
 		sc_sampling_activate_thread();
 		break;

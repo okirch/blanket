@@ -100,7 +100,7 @@ typedef struct {
 	unsigned int		addr_shift;
 
 	/* copy of control.test_id */
-	char *			test_id;
+	const char *		test_id;
 
 	/* The first 8 bytes of the mapped 'thing'. For ELF binaries,
 	 * this should contain the ELF signature */
@@ -112,17 +112,6 @@ typedef struct {
 
 typedef struct {
 	const sc_control_t *	control;
-
-	int			mode;
-
-	/* copy of control.granularity */
-	uint32_t		granularity;
-
-	/* copy of control.addr_shift */
-	uint32_t		addr_shift;
-
-	/* copy of control.test_id */
-	const char *		test_id;
 
 	unsigned int		num_entries;
 	sc_object_entry_t **	entries;
@@ -198,5 +187,32 @@ typedef struct sc_procfs_fd sc_procfs_fd_t;
 extern sc_procfs_fd_t *		sc_procfs_maps_open(void);
 extern const sc_object_entry_t *sc_procfs_maps_getent(sc_procfs_fd_t *);
 extern void			sc_procfs_fclose(sc_procfs_fd_t *);
+
+/*
+ * Accessors for context fields
+ */
+static inline int
+sc_context_get_mode(const sc_context_t *ctx)
+{
+	return ctx->control->mode;
+}
+
+static inline unsigned int
+sc_context_get_addr_shift(const sc_context_t *ctx)
+{
+	return ctx->control->addr_shift;
+}
+
+static inline uint32_t
+sc_context_get_granularity(const sc_context_t *ctx)
+{
+	return ctx->control->granularity;
+}
+
+static inline const char *
+sc_context_get_test_id(const sc_context_t *ctx)
+{
+	return ctx->control->test_id;
+}
 
 #endif /* BLANKET_H */
