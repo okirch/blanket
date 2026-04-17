@@ -47,14 +47,23 @@ Text:             00000298-00007c96
 Test ID:              0
 Sampling size:       16
 Global coverage: 26.92%
-   78.6% sha256_process_block
-   23.5% shaxxx_stream.isra.1
+    7.4% sha256_process_block
+    5.3% sha256_conclude_ctx
+   25.0% sha224_finish_ctx
+   20.0% sha256_process_bytes
+   19.0% sha256_buffer
+   19.0% sha224_buffer
+   20.0% shaxxx_stream.isra.1
+   50.0% sha256_stream
+   50.0% sha224_stream
+   ...
+
 ```
 
 The above is the result of using `sha256sum` to compute the hash over several large files. As you can
 see, the test covered about 27% of all code in the binary's `.text` section. Breakdown by function shows
-that almost 80% of all code in `sha256_process_block()` was exercised by our test case, and a quarter of
-a helper function being exercised.
+how much of each function we reached. Note that these numbers provide a lower bound estimate only, as
+the sampling is only timer-based.
 
 
 ### TODO
