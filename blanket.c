@@ -18,7 +18,7 @@ static void		usage(int);
 
 static const char *	opt_control_path = NULL;
 static int		opt_granularity = -1;
-static int		opt_test_id = -1;
+static const char *	opt_test_id = NULL;
 static int		opt_measure_all = -1;
 static int		opt_symbols = -1;
 
@@ -66,7 +66,9 @@ main(int argc, char **argv)
 			break;
 
 		case 'T':
-			opt_test_id = strtoul(optarg, NULL, 0);
+			if (strlen(optarg) > SC_MAX_TEST_ID)
+				fprintf(stderr, "test id \"%s\" too long, will be truncated to %.*s\n", optarg, SC_MAX_TEST_ID, optarg);
+			opt_test_id = optarg;
 			break;
 
 		case 'p':
@@ -110,8 +112,10 @@ update_and_write_control(sc_control_t *ctl)
 		ctl->granularity = opt_granularity;
 	if (opt_measure_all >= 0)
 		ctl->measure_all = opt_measure_all;
-	if (opt_test_id >= 0)
-		ctl->test_id = opt_test_id;
+	if (opt_test_id != NULL) {
+		strncpy(ctl->test_id, opt_test_id, SC_MAX_TEST_ID);
+		ctl->test_id[SC_MAX_TEST_ID] = '\0';
+	}
 
 	if (sc_control_write(ctl) < 0)
 		exit(1);
@@ -176,7 +180,8 @@ do_show(void)
 		exit(1);
 	}
 
-	printf("Test ID:              %2u\n", ctl->test_id);
+	if (ctl->test_id[0])
+		printf("Test ID:              %s\n", ctl->test_id);
 	printf("Address granularity:  %2u\n", ctl->granularity);
 	printf("Address shift:        %2u%s\n", ctl->addr_shift,
 					(ctl->granularity == (1 << ctl->addr_shift)? "": " (Should be log2(granularity)!!!)"));

@@ -18,6 +18,7 @@
 #define SC_CONTROL_MAX_ENTRIES		128
 #define SC_DEFAULT_GRANULARITY		8
 #define SC_OUTPUT_HEADER_SIZE		1024
+#define SC_MAX_TEST_ID			15
 
 typedef struct sc_control_entry {
 	uint16_t	dev;
@@ -38,7 +39,7 @@ typedef struct {
 	/* This id is copied to the output files we generate.
 	 * It can be used by testing software to correlate output files
 	 * to testing steps */
-	uint32_t		test_id;
+	char			test_id[SC_MAX_TEST_ID+1];
 
 	int			measure_all;
 
