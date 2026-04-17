@@ -56,7 +56,7 @@ pre_main_hook(void)
 	sc_context_init(ctl);
 
 	if (sc_context_rescan())
-		sc_sampling_enable();
+		sc_sampling_enable(sc_context);
 }
 
 /*
@@ -73,7 +73,7 @@ dlopen(const char *path, int flags)
 		printf("Loaded %s\n", path);
 
 	if (sc_context_rescan())
-		sc_sampling_enable();
+		sc_sampling_enable(sc_context);
 
 	return h;
 }

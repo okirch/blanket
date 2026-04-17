@@ -13,7 +13,7 @@
 
 #include "blanket.h"
 
-static int		sc_sampling_enabled = 0;
+static int		sc_sampling_enabled = -1;
 static __thread int	sc_sampling_active_for_thread;
 static __thread	timer_t	sc_thread_timer;
 
@@ -21,16 +21,29 @@ static void		sc_sampling_interrupt(int, siginfo_t *, void *);
 
 
 int
-sc_sampling_enable(void)
+sc_sampling_enable(const sc_context_t *ctx)
 {
 	if (sc_context == NULL)
 		return -1;
 
-	if (sc_sampling_enabled)
+	if (sc_sampling_enabled >= 0)
 		return 0;
 
-	sc_sampling_enabled = 1;
-	sc_sampling_activate_thread();
+	sc_sampling_enabled = ctx->mode;
+
+	switch (ctx->mode) {
+	case SC_MODE_TIMER:
+		sc_sampling_activate_thread();
+		break;
+
+	case SC_MODE_MCOUNT:
+		/* nothing to be done */
+		break;
+
+	default:
+		/* not implemented */;
+	}
+
 	return 0;
 }
 
@@ -106,7 +119,7 @@ sc_sampling_set_timer(void)
 void
 sc_sampling_activate_thread(void)
 {
-	if (!sc_sampling_enabled) {
+	if (sc_sampling_enabled < 0) {
 		printf("Sampling not enabled\n");
 		return;
 	}

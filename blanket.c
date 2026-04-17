@@ -21,6 +21,7 @@ static int		opt_granularity = -1;
 static const char *	opt_test_id = NULL;
 static int		opt_measure_all = -1;
 static int		opt_symbols = -1;
+static int		opt_mode = -1;
 
 enum {
 	OPT_SYMBOLS, OPT_NO_SYMBOLS,
@@ -29,6 +30,7 @@ enum {
 static struct option	long_options[] = {
 	{ "control-path",	required_argument,	NULL,	'P' },
 	{ "measure-all",	no_argument,		NULL,	'A' },
+	{ "mode",		required_argument,	NULL,	'M' },
 	{ "granularity",	required_argument,	NULL,	'G' },
 	{ "symbols",		no_argument,		NULL,	OPT_SYMBOLS },
 	{ "no-symbols",		no_argument,		NULL,	OPT_NO_SYMBOLS },
@@ -43,7 +45,7 @@ main(int argc, char **argv)
 	const char *cmd;
 	int c;
 
-	while ((c = getopt_long(argc, argv, "AG:T:hp:", long_options, NULL)) > 0) {
+	while ((c = getopt_long(argc, argv, "AG:M:T:hp:", long_options, NULL)) > 0) {
 		switch (c) {
 		case 'A':
 			opt_measure_all = 1;
@@ -53,6 +55,19 @@ main(int argc, char **argv)
 			opt_granularity = strtoul(optarg, NULL, 0);
 			if (opt_granularity & (opt_granularity - 1)) {
 				fprintf(stderr, "Granularity must be a power of 2.\n");
+				usage(1);
+			}
+			break;
+
+		case 'M':
+			if (!strcmp(optarg, "timer"))
+				opt_mode = SC_MODE_TIMER;
+			else if (!strcmp(optarg, "mcount"))
+				opt_mode = SC_MODE_MCOUNT;
+			else if (!strcmp(optarg, "plt"))
+				opt_mode = SC_MODE_PLT;
+			else {
+				fprintf(stderr, "Invalid sampling mode \"%s\"\n", optarg);
 				usage(1);
 			}
 			break;
@@ -116,6 +131,8 @@ update_and_write_control(sc_control_t *ctl)
 		strncpy(ctl->test_id, opt_test_id, SC_MAX_TEST_ID);
 		ctl->test_id[SC_MAX_TEST_ID] = '\0';
 	}
+	if (opt_mode >= 0)
+		ctl->mode = opt_mode;
 
 	if (sc_control_write(ctl) < 0)
 		exit(1);
@@ -182,9 +199,28 @@ do_show(void)
 
 	if (ctl->test_id[0])
 		printf("Test ID:              %s\n", ctl->test_id);
-	printf("Address granularity:  %2u\n", ctl->granularity);
-	printf("Address shift:        %2u%s\n", ctl->addr_shift,
+
+	switch (ctl->mode) {
+	case SC_MODE_TIMER:
+		printf("Mode:                 timer\n");
+		printf("Address granularity:  %2u\n", ctl->granularity);
+		printf("Address shift:        %2u%s\n", ctl->addr_shift,
 					(ctl->granularity == (1 << ctl->addr_shift)? "": " (Should be log2(granularity)!!!)"));
+		break;
+
+	case SC_MODE_MCOUNT:
+		printf("Mode:                 mcount\n");
+		break;
+
+	case SC_MODE_PLT:
+		printf("Mode:                 plt\n");
+		break;
+
+	default:
+		printf("Mode:                 unknown (%d)\n", ctl->mode);
+		break;
+	}
+
 	printf("Measure all:          %s\n",
 					(ctl->measure_all)? "yes" : "no");
 	if (ctl->num_entries == 0) {
@@ -223,14 +259,24 @@ show_one_report(const char *path)
 	printf("Sampling size:    %5u\n", 1 << entry->addr_shift);
 	printf("Global coverage: %5.2f%%\n", coverage->global_coverage);
 
+	if (entry->mode == SC_MODE_TIMER)
+		printf("Global coverage:  %.2f%%\n", coverage->global_coverage);
+	else
+		printf("Global coverage:  %u hits\n", coverage->global_hits);
+
 	if (opt_symbols) {
 		unsigned int i;
 
+		printf("Symbols and their coverage:\n");
 		for (i = 0; i < coverage->nsymbols; ++i) {
 			sc_symbol_t *sym = &coverage->symbol[i];
 
-			if (sym->num_hits)
-				printf("  %5.1f%% %s\n", sym->coverage, sym->name);
+			if (sym->num_hits) {
+				if (entry->mode == SC_MODE_TIMER)
+					printf("  %5.1f%% %s\n", sym->coverage, sym->name);
+				else
+					printf("  %5u %s\n", sym->num_hits, sym->name);
+			}
 		}
 
 		if (coverage->unknown_symbol.num_hits)
@@ -290,9 +336,12 @@ usage(int ex)
 		"	Sampling granularity\n"
 		"  --measure-all\n"
 		"	Measure all ELF objects\n"
+		"  --mode <MODE>\n"
+		"	Specify how to measure coverage, can be one of timer (for timer based EIP sampling),\n"
+		"	mcount (for intercepting the mcount() call for elf binaries compiled with -pg), or\n"
+		"	plt (for function call interception by patching the PLT; not yet implemented).\n"
 		"  --test-id <ID>\n"
 		"	An identifier that will be recorded, allowing to correlate coverage reports with test cases.\n"
-		"	For now, must be an integer (but will change to a string at some point).\n"
 		"\n"
 		"blanket add <path> ...\n"
 		"	Specify one or more ELF objects to measure.\n"

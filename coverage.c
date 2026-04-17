@@ -162,6 +162,7 @@ sc_coverage_extract(const sc_object_entry_t *entry)
 		sym->coverage = 100.0 * sym->num_hits / size;
 	}
 
+	coverage->global_hits = num_hits;
 	coverage->global_coverage = 100.0 * num_hits / (last_index - first_index + 1);
 	return coverage;
 }

@@ -20,6 +20,13 @@
 #define SC_OUTPUT_HEADER_SIZE		1024
 #define SC_MAX_TEST_ID			15
 
+enum {
+	SC_MODE_TIMER,
+	SC_MODE_MCOUNT,
+	// not yet implemented: replace the in-memory PLT to intercept calls
+	SC_MODE_PLT,
+};
+
 typedef struct sc_control_entry {
 	uint16_t	dev;
 	uint16_t	reserved[3];
@@ -41,7 +48,10 @@ typedef struct {
 	 * to testing steps */
 	char			test_id[SC_MAX_TEST_ID+1];
 
-	int			measure_all;
+	unsigned char		measure_all;
+	unsigned char		mode;
+
+	unsigned char		__pad[30];
 
 	uint32_t		num_entries;
 	sc_control_entry_t	entry[SC_CONTROL_MAX_ENTRIES];
@@ -56,6 +66,7 @@ typedef struct {
 	uint64_t		ino;
 	struct timeval		timestamp;
 
+	uint8_t			mode;
 	uint32_t		addr_shift;
 	uint32_t		test_id;
 	uint32_t		reserved[2];
@@ -81,6 +92,9 @@ typedef struct {
 	void *			map_base;
 	unsigned long		map_len;
 
+	/* sampling mode */
+	int			mode;
+
 	/* log2(granularity) */
 	unsigned int		addr_shift;
 
@@ -98,6 +112,8 @@ typedef struct {
 typedef struct {
 	const sc_control_t *	control;
 
+	int			mode;
+
 	/* copy of control.granularity */
 	uint32_t		granularity;
 
@@ -105,7 +121,7 @@ typedef struct {
 	uint32_t		addr_shift;
 
 	/* copy of control.test_id */
-	uint32_t		test_id;
+	const char *		test_id;
 
 	unsigned int		num_entries;
 	sc_object_entry_t **	entries;
@@ -121,6 +137,7 @@ typedef struct {
 } sc_symbol_t;
 
 typedef struct {
+	unsigned int		global_hits;
 	double			global_coverage;
 
 	unsigned long		text_offset;
@@ -161,7 +178,7 @@ extern void			sc_object_entry_flush(sc_object_entry_t *entry);
 extern sc_object_entry_t *	sc_object_entry_load(const char *path);
 
 extern void			sc_sampling_activate_thread(void);
-extern int			sc_sampling_enable(void);
+extern int			sc_sampling_enable(const sc_context_t *ctx);
 
 /* Functions related to handling ELF objects */
 extern void			sc_elf_extract_symbols(const sc_object_entry_t *, sc_coverage_t *coverage);

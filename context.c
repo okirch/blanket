@@ -30,6 +30,7 @@ sc_context_init(const sc_control_t *ctl)
 
 	sc_context = calloc(1, sizeof(*sc_context));
 	sc_context->control = ctl;
+	sc_context->mode = ctl->mode;
 	sc_context->granularity = ctl->granularity;
 	sc_context->addr_shift = ctl->addr_shift;
 	sc_context->test_id = ctl->test_id;
@@ -79,6 +80,7 @@ sc_context_add_entry(sc_context_t *ctx, sc_object_entry_t *entry)
 	ctx->num_entries += 1;
 
 	/* printf("Inserted %s at pos %u\n", entry->path, where); */
+	entry->mode = ctx->mode;
 	entry->flags |= SC_CONTEXT_SEEN_F;
 }
 

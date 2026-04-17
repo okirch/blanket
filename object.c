@@ -29,6 +29,7 @@ sc_object_entry_clone(const sc_object_entry_t *entry)
 	e->ino = entry->ino;
 	e->start_addr = entry->start_addr;
 	e->end_addr = entry->end_addr;
+	e->mode = entry->mode;
 	e->addr_shift = entry->addr_shift;
 	e->test_id = entry->test_id;
 
@@ -50,6 +51,7 @@ sc_object_entry_populate_header(const sc_object_entry_t *entry)
 	hdr->ino = entry->ino;
 	hdr->addr_shift = entry->addr_shift;
 	hdr->test_id = entry->test_id;
+	hdr->mode = entry->mode;
 
 	memcpy(hdr->magic, entry->magic, sizeof(hdr->magic));
 
@@ -68,6 +70,7 @@ sc_object_entry_from_header(sc_object_entry_t *entry)
 	entry->path = strdup(hdr->path);
 	entry->dev = hdr->dev;
 	entry->ino = hdr->ino;
+	entry->mode = hdr->mode;
 	entry->addr_shift = hdr->addr_shift;
 
 	memcpy(entry->magic, hdr->magic, sizeof(entry->magic));
