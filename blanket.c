@@ -252,13 +252,12 @@ show_one_report(const char *path)
 		return -1;
 
 	printf("%s\n", entry->path);
-	printf("Text:             %08lx-%08lx\n",
+	printf("ELF text section: %08lx-%08lx\n",
 			coverage->text_offset,
 			coverage->text_offset + coverage->text_size);
 	if (entry->test_id != NULL)
 		printf("Test ID:          %s\n", entry->test_id);
-	printf("Sampling size:    %5u\n", 1 << entry->addr_shift);
-	printf("Global coverage: %5.2f%%\n", coverage->global_coverage);
+	printf("Sampling size:    %u\n", 1 << entry->addr_shift);
 
 	if (entry->mode == SC_MODE_TIMER)
 		printf("Global coverage:  %.2f%%\n", coverage->global_coverage);
