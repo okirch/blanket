@@ -14,7 +14,7 @@
  * Bump the file version whenever making an incompatible format change
  */
 #define SC_CONTROL_PATH_DEFAULT		"/etc/blanket.conf"
-#define SC_CONTROL_FILE_VERSION		0x0001
+#define SC_CONTROL_FILE_VERSION		0x0002
 #define SC_CONTROL_MAX_ENTRIES		128
 #define SC_DEFAULT_GRANULARITY		8
 #define SC_OUTPUT_HEADER_SIZE		1024
