@@ -14,6 +14,7 @@
 #include "blanket.h"
 
 static int		sc_sampling_enabled = -1;
+static unsigned long	sc_sampling_interval = SC_DEFAULT_SAMPLING_INTERVAL; /* nsec */
 static __thread int	sc_sampling_active_for_thread;
 static __thread	timer_t	sc_thread_timer;
 
@@ -33,6 +34,8 @@ sc_sampling_enable(const sc_context_t *ctx)
 
 	switch (sc_context_get_mode(ctx)) {
 	case SC_MODE_TIMER:
+		if ((sc_sampling_interval = sc_context_get_sampling_interval(ctx)) == 0)
+			sc_sampling_interval = SC_DEFAULT_SAMPLING_INTERVAL;
 		sc_sampling_activate_thread();
 		break;
 
@@ -66,20 +69,22 @@ sc_sampling_set_signal_handler(void)
 
 #if 0
 static void
-sc_sampling_set_timer(void)
+sc_sampling_set_timer(unsigned long interval)
 {
 	struct itimerval itimer;
 
 
 	memset(&itimer, 0, sizeof(itimer));
-	itimer.it_interval.tv_usec = 1;
+	itimer.it_interval.tv_usec = interval / 1000;
+	if (itimer.it_interval.tv_usec == 0)
+		itimer.it_interval.tv_usec = 1;
 	itimer.it_value = itimer.it_interval;
 
 	setitimer(ITIMER_VIRTUAL, &itimer, NULL);
 }
 #else
 void
-sc_sampling_set_timer(void)
+sc_sampling_set_timer(unsigned long interval)
 {
 	struct itimerspec itimer;
 	struct sigevent   event;
@@ -106,7 +111,7 @@ sc_sampling_set_timer(void)
 	}
 
 	memset(&itimer, 0, sizeof(itimer));
-	itimer.it_interval.tv_nsec = 1000;
+	itimer.it_interval.tv_nsec = interval;
 	itimer.it_value = itimer.it_interval;
 	if (timer_settime(sc_thread_timer, 0, &itimer, NULL) < 0) {
 		perror("timer_settime");
@@ -119,17 +124,15 @@ sc_sampling_set_timer(void)
 void
 sc_sampling_activate_thread(void)
 {
-	if (sc_sampling_enabled < 0) {
-		printf("Sampling not enabled\n");
+	if (sc_sampling_enabled != SC_MODE_TIMER)
 		return;
-	}
 
 	if (sc_sampling_active_for_thread)
 		return;
 	sc_sampling_active_for_thread = 1;
 
 	sc_sampling_set_signal_handler();
-	sc_sampling_set_timer();
+	sc_sampling_set_timer(sc_sampling_interval);
 }
 
 void

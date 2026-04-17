@@ -17,6 +17,7 @@ static const char *	require_arg(const char *, int argc, char **argv);
 static void		usage(int);
 
 static const char *	opt_control_path = NULL;
+static long		opt_sampling_interval = -1;
 static int		opt_granularity = -1;
 static const char *	opt_test_id = NULL;
 static int		opt_measure_all = -1;
@@ -32,6 +33,7 @@ static struct option	long_options[] = {
 	{ "measure-all",	no_argument,		NULL,	'A' },
 	{ "mode",		required_argument,	NULL,	'M' },
 	{ "granularity",	required_argument,	NULL,	'G' },
+	{ "sampling-interval",	required_argument,	NULL,	'S' },
 	{ "symbols",		no_argument,		NULL,	OPT_SYMBOLS },
 	{ "no-symbols",		no_argument,		NULL,	OPT_NO_SYMBOLS },
 	{ "test-id",		required_argument,	NULL,	'T' },
@@ -45,7 +47,7 @@ main(int argc, char **argv)
 	const char *cmd;
 	int c;
 
-	while ((c = getopt_long(argc, argv, "AG:M:T:hp:", long_options, NULL)) > 0) {
+	while ((c = getopt_long(argc, argv, "AG:M:S:T:hp:", long_options, NULL)) > 0) {
 		switch (c) {
 		case 'A':
 			opt_measure_all = 1;
@@ -78,6 +80,16 @@ main(int argc, char **argv)
 
 		case OPT_NO_SYMBOLS:
 			opt_symbols = 0;
+			break;
+
+		case 'S':
+			opt_sampling_interval = strtol(optarg, NULL, 0);
+			if (opt_sampling_interval <= 0) {
+				fprintf(stderr, "Invalid sampling interval \"%s\"\n", optarg);
+				usage(1);
+			}
+			if (opt_sampling_interval >= 1000000000)
+				fprintf(stderr, "Capped sampling interval \"%s\" to %ld\n", optarg, opt_sampling_interval);
 			break;
 
 		case 'T':
@@ -123,6 +135,10 @@ main(int argc, char **argv)
 static void
 update_and_write_control(sc_control_t *ctl)
 {
+	if (opt_mode >= 0)
+		ctl->mode = opt_mode;
+	if (opt_sampling_interval >= 0)
+		ctl->sampling_interval = opt_sampling_interval;
 	if (opt_granularity >= 0)
 		ctl->granularity = opt_granularity;
 	if (opt_measure_all >= 0)
@@ -131,8 +147,6 @@ update_and_write_control(sc_control_t *ctl)
 		strncpy(ctl->test_id, opt_test_id, SC_MAX_TEST_ID);
 		ctl->test_id[SC_MAX_TEST_ID] = '\0';
 	}
-	if (opt_mode >= 0)
-		ctl->mode = opt_mode;
 
 	if (sc_control_write(ctl) < 0)
 		exit(1);
@@ -203,8 +217,9 @@ do_show(void)
 	switch (ctl->mode) {
 	case SC_MODE_TIMER:
 		printf("Mode:                 timer\n");
-		printf("Address granularity:  %2u\n", ctl->granularity);
-		printf("Address shift:        %2u%s\n", ctl->addr_shift,
+		printf("Sampling interval:    %d nsec\n", ctl->sampling_interval);
+		printf("Address granularity:  %u\n", ctl->granularity);
+		printf("Address shift:        %u%s\n", ctl->addr_shift,
 					(ctl->granularity == (1 << ctl->addr_shift)? "": " (Should be log2(granularity)!!!)"));
 		break;
 

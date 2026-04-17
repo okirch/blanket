@@ -17,6 +17,7 @@
 #define SC_CONTROL_FILE_VERSION		0x0002
 #define SC_CONTROL_MAX_ENTRIES		128
 #define SC_DEFAULT_GRANULARITY		8
+#define SC_DEFAULT_SAMPLING_INTERVAL	1000	/* 1 msec */
 #define SC_OUTPUT_HEADER_SIZE		1024
 #define SC_MAX_TEST_ID			15
 
@@ -42,6 +43,11 @@ typedef struct {
 
 	/* log2(granularity) */
 	unsigned int		addr_shift;
+
+	/* Defines how frequently we sample the EIP.
+	 * The value is given in nsec and represents how much time we allow to pass
+	 * before we sample again. */
+	uint32_t		sampling_interval;
 
 	/* This id is copied to the output files we generate.
 	 * It can be used by testing software to correlate output files
@@ -195,6 +201,12 @@ static inline int
 sc_context_get_mode(const sc_context_t *ctx)
 {
 	return ctx->control->mode;
+}
+
+static inline uint32_t
+sc_context_get_sampling_interval(const sc_context_t *ctx)
+{
+	return ctx->control->sampling_interval;
 }
 
 static inline unsigned int
