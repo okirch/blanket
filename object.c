@@ -50,8 +50,10 @@ sc_object_entry_populate_header(const sc_object_entry_t *entry)
 	hdr->dev = entry->dev;
 	hdr->ino = entry->ino;
 	hdr->addr_shift = entry->addr_shift;
-	hdr->test_id = entry->test_id;
 	hdr->mode = entry->mode;
+
+	if (entry->test_id)
+		memcpy(hdr->test_id, entry->test_id, sizeof(hdr->test_id) - 1);
 
 	memcpy(hdr->magic, entry->magic, sizeof(hdr->magic));
 
@@ -72,6 +74,8 @@ sc_object_entry_from_header(sc_object_entry_t *entry)
 	entry->ino = hdr->ino;
 	entry->mode = hdr->mode;
 	entry->addr_shift = hdr->addr_shift;
+	if (hdr->test_id[0])
+		entry->test_id = hdr->test_id;
 
 	memcpy(entry->magic, hdr->magic, sizeof(entry->magic));
 

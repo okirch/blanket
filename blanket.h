@@ -68,8 +68,9 @@ typedef struct {
 
 	uint8_t			mode;
 	uint32_t		addr_shift;
-	uint32_t		test_id;
 	uint32_t		reserved[2];
+
+	char			test_id[SC_MAX_TEST_ID+1];
 
 	/* The first 8 bytes of the mapped 'thing'. For ELF binaries,
 	 * this should contain the ELF signature */
@@ -99,7 +100,7 @@ typedef struct {
 	unsigned int		addr_shift;
 
 	/* copy of control.test_id */
-	uint32_t		test_id;
+	char *			test_id;
 
 	/* The first 8 bytes of the mapped 'thing'. For ELF binaries,
 	 * this should contain the ELF signature */
