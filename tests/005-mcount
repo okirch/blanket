@@ -1,0 +1,43 @@
+#!/bin/bash
+
+TMPDIR=$(mktemp -d /tmp/test.XXXXXX)
+trap "rm -rf $TMPDIR" 0
+
+export BLANKET_CONTROL=$TMPDIR/blanket.conf
+set -e
+
+./blanket init --mode mcount
+./blanket add tests/mcount
+
+echo "*** configuration"
+./blanket show
+echo
+
+echo "*** running test command"
+rm -f /tmp/coverage-*
+export LD_PRELOAD=$PWD/libblanket.so
+./tests/mcount || true
+echo
+
+echo "*** report"
+./blanket report /tmp/coverage-*
+echo
+
+found=$TMPDIR/found
+./blanket report /tmp/coverage-* | while read a b c; do
+	case "$b" in
+	*elapsed*)
+		if [ -n "$a" -a "$a" -gt 0 ]; then
+			touch $found
+		else
+			echo "*** symbol $b has only $a coverage" >&2
+		fi
+	esac
+done
+
+if [ -e $found ]; then
+	echo "Good, it seems we detected coverage elapsed()"
+else
+	echo "Did not detect coverage of elapsed()"
+fi
+

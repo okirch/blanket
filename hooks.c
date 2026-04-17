@@ -79,6 +79,17 @@ dlopen(const char *path, int flags)
 }
 
 /*
+ * Intercept mcount calls for programs compiled with -pg
+ */
+void
+mcount(void)
+{
+	caddr_t eip = __builtin_return_address(0);
+	if (sc_context != NULL)
+		sc_context_add_sample(sc_context, eip);
+}
+
+/*
  * Intercept calls to pthread_create
  *
  * Right now, this will work *only* if we already decided to enable sampling before

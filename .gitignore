@@ -4,5 +4,6 @@
 tdl
 tests/threads
 tests/dlopen
+tests/mcount
 blanket
 blanket.conf

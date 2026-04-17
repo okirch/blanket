@@ -1,6 +1,6 @@
 
-CFLAGS = -falign-functions=256 -Wall -g
-UTILS	= threads dlopen
+CFLAGS = -Wall -g
+UTILS	= threads dlopen mcount
 
 all:	$(UTILS)
 
@@ -9,6 +9,12 @@ clean:
 
 dlopen: dlopen.o
 	$(CC) -o $@ dlopen.o -ldl
+
+mcount: mcount.o
+	$(CC) -pg -o $@ mcount.o
+
+mcount.o: mcount.c
+	$(CC) $(CFLAGS) -pg -c -o $@ $<
 
 threads: threads.o
 	$(CC) -o $@ threads.o -lpthread -lm
