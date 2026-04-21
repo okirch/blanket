@@ -109,25 +109,61 @@ sc_control_write(sc_control_t *ctl)
 	return 0;
 }
 
-int
-sc_control_add_file(sc_control_t *ctl, const char *path)
+static sc_control_entry_t *
+__sc_control_add_file(sc_control_t *ctl, const char *path)
 {
 	struct stat stb;
 	sc_control_entry_t *entry;
 
 	if (stat(path, &stb) < 0) {
 		fprintf(stderr, "could not add %s: %m\n", path);
-		return -1;
+		return NULL;
+	}
+
+	if (sc_control_get_entry(ctl, stb.st_dev, stb.st_ino, path) != NULL) {
+		fprintf(stderr, "%s is already tracked\n", path);
+		return NULL;
 	}
 
 	if (ctl->num_entries >= SC_CONTROL_MAX_ENTRIES) {
 		fprintf(stderr, "could not add %s: too many entries in control file\n", path);
-		return -1;
+		return NULL;
 	}
 
 	entry = &ctl->entry[ctl->num_entries++];
 	entry->dev = stb.st_dev;
 	entry->ino = stb.st_ino;
+	return entry;
+}
+
+int
+sc_control_add_file(sc_control_t *ctl, const char *path)
+{
+	if (__sc_control_add_file(ctl, path) == NULL)
+		return -1;
+	return 0;
+}
+
+int
+sc_control_add_file_symbol(sc_control_t *ctl, const char *path, const char *symbol_name)
+{
+	sc_object_entry_t fake_object = { .path = (char *) path };
+	sc_control_entry_t *entry;
+	const sc_symbol_t *symbol;
+
+	if ((entry = __sc_control_add_file(ctl, path)) == NULL)
+		return -1;
+
+	fake_object.dev = entry->dev;
+	fake_object.ino = entry->ino;
+
+	if (!(symbol = sc_elf_locate_symbol(&fake_object, symbol_name))) {
+		fprintf(stderr, "symbol %s not found in %s\n", symbol_name, path);
+		return -1;
+	}
+
+	entry->region_start = symbol->start_offset;
+	entry->region_end = symbol->end_offset;
 	return 0;
 }
 

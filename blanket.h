@@ -29,9 +29,12 @@ enum {
 };
 
 typedef struct sc_control_entry {
-	uint16_t	dev;
-	uint16_t	reserved[3];
-	uint64_t	ino;
+	uint16_t		dev;
+	uint16_t		reserved[3];
+	uint64_t		ino;
+
+	/* For now, just a single region */
+	uint32_t		region_start, region_end;
 } sc_control_entry_t;
 
 typedef struct {
@@ -161,6 +164,7 @@ extern sc_control_t *		sc_control_read(void);
 extern sc_control_t *		sc_control_read_quiet(void);
 extern int			sc_control_write(sc_control_t *ctl);
 extern int			sc_control_add_file(sc_control_t *, const char *path);
+extern int			sc_control_add_file_symbol(sc_control_t *ctl, const char *path, const char *symbol_name);
 extern int			sc_control_add_dev_ino(sc_control_t *, dev_t dev, ino_t ino);
 extern const sc_control_entry_t *sc_control_get_entry(const sc_control_t *, dev_t dev, ino_t ino, const char *path);
 
@@ -180,6 +184,7 @@ extern int			sc_sampling_enable(const sc_context_t *ctx);
 
 /* Functions related to handling ELF objects */
 extern void			sc_elf_extract_symbols(const sc_object_entry_t *, sc_coverage_t *coverage);
+extern const sc_symbol_t *	sc_elf_locate_symbol(const sc_object_entry_t *, const char *);
 extern sc_coverage_t *		sc_coverage_extract(const sc_object_entry_t *);
 extern void			sc_coverage_add_symbol(sc_coverage_t *, const char *, unsigned long, unsigned long);
 extern void			sc_coverage_free(sc_coverage_t *);

@@ -444,3 +444,36 @@ sc_elf_extract_symbols(const sc_object_entry_t *entry, sc_coverage_t *coverage)
 	if (object->debug_object)
 		sc_elf_object_extract_symbols(object->debug_object, coverage, ".text");
 }
+
+const sc_symbol_t *
+sc_elf_locate_symbol(const sc_object_entry_t *entry, const char *name)
+{
+	sc_elf_object_t *object;
+	sc_elf_section_t *section;
+	sc_elf_symbol_t *elfsym;
+	unsigned long reloc;
+	unsigned int i;
+
+	object = sc_elf_get_object_cached(entry);
+	if (object == NULL)
+		return NULL;
+
+	if (!(section = sc_elf_object_get_section(object, ".text")))
+		return NULL;
+
+	reloc = section->hdr.sh_addr - section->hdr.sh_offset;
+
+	for (i = 0, elfsym = object->symbol; i < object->nsymbols; ++i, ++elfsym) {
+		if (elfsym->sym.st_shndx == section->index
+		 && !strcmp(elfsym->name, name)) {
+			static sc_symbol_t result;
+
+			result.name = name;
+			result.start_offset = elfsym->sym.st_value - reloc;
+			result.end_offset = result.start_offset + elfsym->sym.st_size;
+			return &result;
+		}
+	}
+
+	return NULL;
+}
