@@ -87,6 +87,7 @@ void
 sc_context_update_mapping(sc_context_t *ctx, const sc_object_entry_t *entry)
 {
 	const sc_control_t *ctl = ctx->control;
+	const sc_control_entry_t *ctl_entry;
 	unsigned int i;
 
 	/* Check if we're interested in tracing this */
@@ -94,7 +95,7 @@ sc_context_update_mapping(sc_context_t *ctx, const sc_object_entry_t *entry)
 		if (sc_tracing)
 			printf("Tracing all objects\n");
 	} else
-	if (sc_control_get_entry(ctl, entry->dev, entry->ino, entry->path)) {
+	if ((ctl_entry = sc_control_get_entry(ctl, entry->dev, entry->ino, entry->path)) != NULL) {
 		if (sc_tracing)
 			printf("Tracking %s\n", entry->path);
 	} else {
@@ -116,6 +117,11 @@ sc_context_update_mapping(sc_context_t *ctx, const sc_object_entry_t *entry)
 	}
 
 	sc_context_add_entry(ctx, sc_object_entry_clone(entry));
+
+	if (ctl_entry != NULL && ctl_entry->region_end) {
+		sc_sampling_ptrace_function(entry->start_addr + ctl_entry->region_start,
+					    entry->start_addr + ctl_entry->region_end);
+	}
 }
 
 int
