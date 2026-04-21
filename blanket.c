@@ -139,8 +139,10 @@ update_and_write_control(sc_control_t *ctl)
 		ctl->mode = opt_mode;
 	if (opt_sampling_interval >= 0)
 		ctl->sampling_interval = opt_sampling_interval;
-	if (opt_granularity >= 0)
+	if (opt_granularity >= 0) {
 		ctl->granularity = opt_granularity;
+		ctl->addr_shift = ffsl(opt_granularity) - 1;
+	}
 	if (opt_measure_all >= 0)
 		ctl->measure_all = opt_measure_all;
 	if (opt_test_id != NULL) {
