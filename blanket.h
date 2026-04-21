@@ -21,9 +21,12 @@
 #define SC_OUTPUT_HEADER_SIZE		1024
 #define SC_MAX_TEST_ID			15
 
+typedef struct sc_ptrace_region		sc_ptrace_region_t;
+
 enum {
 	SC_MODE_TIMER,
 	SC_MODE_MCOUNT,
+	SC_MODE_PTRACE,
 	// not yet implemented: replace the in-memory PLT to intercept calls
 	SC_MODE_PLT,
 };
@@ -124,6 +127,9 @@ typedef struct {
 
 	unsigned int		num_entries;
 	sc_object_entry_t **	entries;
+
+	unsigned int		num_tracers;
+	sc_ptrace_region_t *	tracers;
 } sc_context_t;
 
 typedef struct {
@@ -181,6 +187,7 @@ extern sc_object_entry_t *	sc_object_entry_load(const char *path);
 
 extern void			sc_sampling_activate_thread(void);
 extern int			sc_sampling_enable(const sc_context_t *ctx);
+extern int			sc_sampling_ptrace_function(caddr_t start_addr, caddr_t end_addr);
 
 /* Functions related to handling ELF objects */
 extern void			sc_elf_extract_symbols(const sc_object_entry_t *, sc_coverage_t *coverage);
