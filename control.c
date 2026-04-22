@@ -169,20 +169,6 @@ sc_control_add_file_symbol(sc_control_t *ctl, const char *path, const char *symb
 	return 0;
 }
 
-int
-sc_control_add_dev_ino(sc_control_t *ctx, dev_t dev, ino_t ino)
-{
-	unsigned int i = ctx->num_entries;
-
-	if (i >= SC_CONTROL_MAX_ENTRIES)
-		return -1;
-
-	ctx->entry[i].dev = dev;
-	ctx->entry[i].ino = ino;
-	ctx->num_entries++;
-	return 0;
-}
-
 const sc_control_entry_t *
 sc_control_get_entry(const sc_control_t *ctl, dev_t dev, ino_t ino, const char *path)
 {
