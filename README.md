@@ -1,10 +1,8 @@
 ## A simple preload library that measures code coverage
 
-This library discovers shared libraries that get loaded into an executable at runtime.
-It enables statistical profiling on those ELF objects that are deemed interesting.
-
-This is still work in progress. It does something, but it is not ready for production
-yet.
+This project started with the question: what would be an easy tool for measuring the coverage of running
+a set of openQA tests on a Linux distribution? And can that be achieved without recompiling the entire
+codebase with instrumentation?
 
 ### How it works
 
