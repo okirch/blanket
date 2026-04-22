@@ -5,7 +5,7 @@ LIBS	= -ldw -lelf -ldl -lncurses
 
 LIBOBJS	= context.o control.o object.o sampling.o kernel.o hooks.o
 
-UTILOBJS= blanket.o coverage.o elf.o object.o control.o dwarf.o
+UTILOBJS= blanket.o report.o coverage.o elf.o object.o control.o dwarf.o
 
 all:	libblanket.so blanket
 
@@ -29,8 +29,10 @@ blanket.o: blanket.c blanket.h
 context.o: context.c blanket.h
 control.o: control.c blanket.h
 coverage.o: coverage.c blanket.h
+dwarf.o: dwarf.c blanket.h
 elf.o: elf.c blanket.h
 hooks.o: hooks.c blanket.h
 kernel.o: kernel.c blanket.h
 object.o: object.c blanket.h
+report.o: report.c blanket.h
 sampling.o: sampling.c blanket.h

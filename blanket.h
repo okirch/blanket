@@ -171,6 +171,8 @@ typedef struct {
 
 struct sc_elf_object;
 
+typedef struct sc_report	sc_report_t;
+
 /* Either use the default path, or have user override via env var. */
 extern const char *		sc_control_path;
 
@@ -215,7 +217,17 @@ extern void			sc_dwarf_dump(const char *path);
 extern void			sc_dwarf_extract_coverage(const sc_object_entry_t *entry, sc_coverage_t *coverage);
 
 /* Functions related to reporting */
-extern int			sc_report_show(const char *path);
+extern sc_report_t *		sc_report_alloc(int details);
+extern int			sc_report_process_file(sc_report_t *, const char *path);
+extern void			sc_report_trailer(sc_report_t *report);
+
+/* Flags for sc_report_alloc() */
+enum {
+	SC_DETAIL_SYMBOLS	= 0x0001,
+	SC_DETAIL_SOURCELINES	= 0x0002,
+	SC_DETAIL_ANNOTATE	= 0x0004,
+	SC_DETAIL_NONE		= 0xFFFF,
+};
 
 /* Flags for sc_coverage_extract() */
 #define SC_COVERAGE_SOURCE	0x0001
