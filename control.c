@@ -131,8 +131,9 @@ __sc_control_add_file(sc_control_t *ctl, const char *path)
 	}
 
 	entry = &ctl->entry[ctl->num_entries++];
-	entry->dev = stb.st_dev;
-	entry->ino = stb.st_ino;
+	entry->file.dev = stb.st_dev;
+	entry->file.ino = stb.st_ino;
+	sc_squeeze_path(path, entry->file.path, sizeof(entry->file.path));
 	return entry;
 }
 
@@ -156,8 +157,8 @@ sc_control_add_file_symbol(sc_control_t *ctl, const char *path, const char *symb
 
 	memset(&fake_object, 0, sizeof(fake_object));
 	fake_object.file.path = (char *) path;
-	fake_object.file.dev = entry->dev;
-	fake_object.file.ino = entry->ino;
+	fake_object.file.dev = entry->file.dev;
+	fake_object.file.ino = entry->file.ino;
 
 	if (!(symbol = sc_elf_locate_symbol(&fake_object, symbol_name))) {
 		fprintf(stderr, "symbol %s not found in %s\n", symbol_name, path);
@@ -177,7 +178,7 @@ sc_control_get_entry(const sc_control_t *ctl, dev_t dev, ino_t ino, const char *
 	for (i = 0; i < ctl->num_entries; ++i) {
 		const sc_control_entry_t *e = &ctl->entry[i];
 
-		if (e->dev == dev && e->ino == ino)
+		if (e->file.dev == dev && e->file.ino == ino)
 			return e;
 	}
 	return NULL;

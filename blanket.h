@@ -33,10 +33,18 @@ enum {
 	SC_MODE_PLT,
 };
 
-typedef struct sc_control_entry {
+typedef struct {
+	uint32_t		start, end;
+} sc_file_region;
+
+typedef struct {
 	uint16_t		dev;
-	uint16_t		reserved[3];
 	uint64_t		ino;
+	char			path[128];
+} sc_ondisk_object_reference_t;
+
+typedef struct sc_control_entry {
+	sc_ondisk_object_reference_t file;
 
 	/* For now, just a single region */
 	uint32_t		region_start, region_end;

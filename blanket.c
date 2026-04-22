@@ -319,14 +319,19 @@ do_show(void)
 
 	printf("Measure all:          %s\n",
 					(ctl->measure_all)? "yes" : "no");
+	printf("\n");
+
 	if (ctl->num_entries == 0) {
 		printf("No object entries\n");
 	} else {
 		printf("%u object entries\n", ctl->num_entries);
+		printf("  %4s %12s path\n", "dev", "ino");
 		for (i = 0; i < ctl->num_entries; ++i) {
 			sc_control_entry_t *entry = &ctl->entry[i];
 
-			printf("Entry %2u:    dev %04x ino %08lu", i, (unsigned int) entry->dev, (unsigned long) entry->ino);
+			printf("  %04x %12lu %s",
+					(unsigned int) entry->file.dev, (unsigned long) entry->file.ino,
+					entry->file.path);
 
 			if (entry->region_end)
 				printf("; region=%08lx-%08lx",
