@@ -23,11 +23,16 @@ static long		opt_sampling_interval = -1;
 static int		opt_granularity = -1;
 static const char *	opt_test_id = NULL;
 static int		opt_measure_all = -1;
-static int		opt_symbols = -1;
 static int		opt_mode = -1;
 
 enum {
-	OPT_SYMBOLS, OPT_NO_SYMBOLS,
+	SC_DETAIL_SYMBOLS	= 0x0001,
+	SC_DETAIL_NONE		= 0xFFFF,
+};
+static int		opt_details = 0;
+
+enum {
+	OPT_SYMBOLS, OPT_NO_DETAILS,
 };
 
 static struct option	long_options[] = {
@@ -37,7 +42,7 @@ static struct option	long_options[] = {
 	{ "granularity",	required_argument,	NULL,	'G' },
 	{ "sampling-interval",	required_argument,	NULL,	'S' },
 	{ "symbols",		no_argument,		NULL,	OPT_SYMBOLS },
-	{ "no-symbols",		no_argument,		NULL,	OPT_NO_SYMBOLS },
+	{ "no-details",		no_argument,		NULL,	OPT_NO_DETAILS },
 	{ "test-id",		required_argument,	NULL,	'T' },
 	{ "help",		no_argument,		NULL,	'h' },
 	{ NULL }
@@ -79,11 +84,11 @@ main(int argc, char **argv)
 			break;
 
 		case OPT_SYMBOLS:
-			opt_symbols = 1;
+			opt_details |= SC_DETAIL_SYMBOLS;
 			break;
 
-		case OPT_NO_SYMBOLS:
-			opt_symbols = 0;
+		case OPT_NO_DETAILS:
+			opt_details = SC_DETAIL_NONE;
 			break;
 
 		case 'S':
@@ -116,6 +121,9 @@ main(int argc, char **argv)
 
 	sc_control_set_path(opt_control_path);
 	printf("Using control file %s\n", sc_control_path);
+
+	if (opt_details == 0)
+		opt_details = SC_DETAIL_SYMBOLS;
 
 	cmd = require_arg("command", argc, argv);
 	if (!strcmp(cmd, "init")) {
@@ -360,7 +368,7 @@ show_one_report(const char *path)
 	else
 		printf("Global coverage:  %u hits\n", coverage->global_hits);
 
-	if (opt_symbols) {
+	if (opt_details & SC_DETAIL_SYMBOLS) {
 		unsigned int i;
 
 		printf("Symbols and their coverage:\n");
@@ -458,8 +466,8 @@ usage(int ex)
 		"	Display per-function coverage. This is the default behavior.\n"
 		"	The binary should be either unstripped, or you should have\n"
 		"	the corresponding debuginfo package installed.\n"
-		"  --no-symbols\n"
-		"	Do not display per-function coverage.\n"
+		"  --no-details\n"
+		"	Do not display any coverage details, just the summary.\n"
 	);
 	exit(ex);
 }
