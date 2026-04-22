@@ -150,7 +150,7 @@ sc_source_file_add_line_hit(sc_source_file_t *sf, unsigned int lineno)
 }
 
 sc_coverage_t *
-sc_coverage_extract(const sc_object_entry_t *entry)
+sc_coverage_extract(const sc_object_entry_t *entry, int flags)
 {
 	sc_coverage_t *coverage;
 	unsigned int first_index, last_index, i;
@@ -205,6 +205,10 @@ sc_coverage_extract(const sc_object_entry_t *entry)
 
 	coverage->global_hits = num_hits;
 	coverage->global_coverage = 100.0 * num_hits / (last_index - first_index + 1);
+
+	if (flags & SC_COVERAGE_SOURCE)
+		sc_dwarf_extract_coverage(entry, coverage);
+
 	return coverage;
 }
 

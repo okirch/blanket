@@ -42,6 +42,11 @@ typedef struct sc_dwarf_iterator {
 	sc_dwarf_cu_ctx_t *	cu_ctx;
 } sc_dwarf_iterator_t;
 
+typedef struct {
+	const char *		name;
+	unsigned long		start_offset, end_offset;
+	int			file;
+} sc_dwarf_symbol_t;
 
 static void
 sc_dwarf_cu_ctx_free(sc_dwarf_cu_ctx_t *ctx)
@@ -124,6 +129,23 @@ sc_dwarf_next_cu(sc_dwarf_iterator_t *iter, sc_dwarf_searchctx_t *search)
 failed:
 	sc_dwarf_cu_ctx_free(ctx);
 	return NULL;
+}
+
+static sc_source_file_t *
+sc_dwarf_cu_get_source_file(sc_dwarf_cu_ctx_t *cu, const sc_dwarf_symbol_t *sym, sc_coverage_t *coverage)
+{
+	unsigned int index = sym->file;
+	const char *path = NULL;
+	sc_source_file_t *file;
+
+	if (index == 0 || index >= cu->nfiles)
+		return NULL;
+
+	path = dwarf_filesrc(cu->files, index, NULL, NULL);
+	file = sc_coverage_add_source_file(coverage, cu->unit_num, path);
+	if (file != NULL)
+		file->file_id = index;
+	return file;
 }
 
 sc_dwarf_searchctx_t *
@@ -227,6 +249,40 @@ sc_dwarf_search_locate_function(sc_dwarf_searchctx_t *search, sc_dwarf_cu_ctx_t 
 	return false;
 }
 
+static const sc_dwarf_symbol_t *
+sc_dwarf_cu_find_function(sc_dwarf_cu_ctx_t *cu, unsigned long addr)
+{
+	Dwarf_Die child;
+	Dwarf_Attribute attr;
+	Dwarf_Addr low_pc;
+	Dwarf_Word high_pc, file_index;
+	int s;
+
+	for (s = dwarf_child(&cu->die, &child); s == 0; s = dwarf_siblingof(&child, &child)) {
+		const char *name = dwarf_diename(&child);
+
+		if (name == NULL)
+			continue;
+
+		if (dwarf_formaddr(dwarf_attr(&child, DW_AT_low_pc, &attr), &low_pc) != 0
+		 || dwarf_formudata(dwarf_attr(&child, DW_AT_high_pc, &attr), &high_pc) != 0
+		 || dwarf_formudata(dwarf_attr(&child, DW_AT_decl_file, &attr), &file_index) != 0)
+			continue;
+
+		if (low_pc <= addr && addr - low_pc < high_pc) {
+			static sc_dwarf_symbol_t sym;
+
+			sym.name = name;
+			sym.start_offset = low_pc;
+			sym.end_offset = low_pc + high_pc;
+			sym.file = file_index;
+			return &sym;
+		}
+	}
+
+	return NULL;
+}
+
 static bool
 sc_dwarf_search_match_addr(sc_dwarf_searchctx_t *search, Dwarf_Addr lineaddr)
 {
@@ -265,6 +321,49 @@ sc_dwarf_inspect(const char *path, sc_dwarf_searchctx_t *search)
 			 && dwarf_lineaddr(l, &lineaddr) == 0
 			 && sc_dwarf_search_match_addr(search, lineaddr))
 				printf("  line %u %u %p\n", i, lineno, (caddr_t) lineaddr);
+		}
+	}
+
+	sc_dwarf_iterator_free(iter);
+}
+
+void
+sc_dwarf_extract_coverage(const sc_object_entry_t *entry, sc_coverage_t *coverage)
+{
+	sc_dwarf_iterator_t *iter;
+	sc_dwarf_cu_ctx_t *cu;
+
+	if ((iter = sc_dwarf_open(entry->path)) == NULL)
+		return;
+
+	while ((cu = sc_dwarf_next_cu(iter, NULL)) != NULL) {
+		unsigned long addr = 0;
+		sc_source_file_t *source_file = NULL;
+
+		addr = sc_object_entry_get_next_hit(entry, 0, coverage->text_reloc);
+		while (addr) {
+			const sc_dwarf_symbol_t *symbol;
+
+			symbol = sc_dwarf_cu_find_function(cu, addr);
+			if (symbol == NULL) {
+				addr = sc_object_entry_get_next_hit(entry, addr, coverage->text_reloc);
+				continue;
+			}
+
+			if (source_file == NULL || source_file->file_id != symbol->file)
+				source_file = sc_dwarf_cu_get_source_file(cu, symbol, coverage);
+
+			while (addr && symbol->start_offset <= addr && addr < symbol->end_offset) {
+				Dwarf_Line *dl;
+				int line;
+
+				if (source_file
+				 && (dl = dwarf_getsrc_die(&cu->die, (Dwarf_Addr) addr)) != NULL
+				 && dwarf_lineno(dl, &line) == 0)
+					sc_source_file_add_line_hit(source_file, line);
+
+				addr = sc_object_entry_get_next_hit(entry, addr, coverage->text_reloc);
+			}
 		}
 	}
 

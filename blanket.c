@@ -343,7 +343,7 @@ show_one_report(const char *path)
 		return -1;
 	}
 
-	coverage = sc_coverage_extract(entry);
+	coverage = sc_coverage_extract(entry, 0);
 	if (coverage == NULL)
 		return -1;
 

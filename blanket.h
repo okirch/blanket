@@ -7,6 +7,7 @@
 
 #include <sys/types.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 /*
  * On-disk structure of the control file
@@ -206,7 +207,7 @@ extern int			sc_sampling_ptrace_function(caddr_t start_addr, caddr_t end_addr);
 /* Functions related to handling ELF objects */
 extern void			sc_elf_extract_symbols(const sc_object_entry_t *, sc_coverage_t *coverage);
 extern const sc_symbol_t *	sc_elf_locate_symbol(const sc_object_entry_t *, const char *);
-extern sc_coverage_t *		sc_coverage_extract(const sc_object_entry_t *);
+extern sc_coverage_t *		sc_coverage_extract(const sc_object_entry_t *, int flags);
 extern void			sc_coverage_add_symbol(sc_coverage_t *, const char *, unsigned long, unsigned long);
 extern void			sc_coverage_free(sc_coverage_t *);
 extern sc_source_file_t *	sc_coverage_add_source_file(sc_coverage_t *, unsigned int, const char *);
@@ -215,9 +216,13 @@ extern void			sc_dwarf_dump(const char *path);
 extern sc_dwarf_searchctx_t *	sc_dwarf_search_create(const char *filename, const char *function);
 extern void			sc_dwarf_search_free(sc_dwarf_searchctx_t *);
 extern void			sc_dwarf_inspect(const char *path, sc_dwarf_searchctx_t *search);
+extern void			sc_dwarf_extract_coverage(const sc_object_entry_t *entry, sc_coverage_t *coverage);
 
 /* Functions related to reporting */
 extern int			sc_report_show(const char *path);
+
+/* Flags for sc_coverage_extract() */
+#define SC_COVERAGE_SOURCE	0x0001
 
 /*
  * procsfs access
