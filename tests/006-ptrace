@@ -1,0 +1,48 @@
+#!/bin/bash
+
+TMPDIR=$(mktemp -d /tmp/test.XXXXXX)
+trap "rm -rf $TMPDIR" 0
+
+export BLANKET_CONTROL=$TMPDIR/blanket.conf
+set -e
+
+./blanket init --mode ptrace
+./blanket trace ./tests/dlopen main
+
+echo "*** configuration"
+./blanket show
+echo
+
+echo "*** running test command"
+rm -f /tmp/coverage-*
+export LD_PRELOAD=$PWD/libblanket.so
+./tests/dlopen
+echo
+
+echo "*** report"
+./blanket report --source /tmp/coverage-*
+echo
+
+found=$TMPDIR/found
+echo 0 > $found
+
+./blanket report --source /tmp/coverage-* | (
+	# disable -e option, otherwise we exit on "let count=0"
+	set +e
+	let count=0
+	while read line; do
+		case "$line" in
+		*.c)	: ;;
+		[0-9]*)
+			let count=$count+1;;
+		esac
+	done
+	echo $count > $found
+)
+
+count=$(cat $found)
+if [ $count -gt 5 ]; then
+	echo "Good, it seems we detected coverage of $count lines"
+else
+	echo "Did not detect sufficient coverage"
+fi
