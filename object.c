@@ -197,3 +197,23 @@ void
 sc_object_entry_flush(sc_object_entry_t *entry)
 {
 }
+
+unsigned long
+sc_object_entry_get_next_hit(const sc_object_entry_t *entry, unsigned long last_addr, unsigned long text_reloc)
+{
+	unsigned int index;
+
+	if (last_addr == 0)
+		index = 0;
+	else
+		index = 1 + ((last_addr - text_reloc) >> entry->addr_shift);
+
+	while (index < entry->num_counters) {
+		if (entry->counters[index] != 0)
+			return (index << entry->addr_shift) + text_reloc;
+		index++;
+	}
+
+	return 0;
+}
+

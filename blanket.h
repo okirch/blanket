@@ -154,6 +154,7 @@ typedef struct {
 	unsigned int		global_hits;
 	double			global_coverage;
 
+	unsigned long		text_reloc;
 	unsigned long		text_offset;
 	unsigned int		text_size;
 
@@ -196,6 +197,7 @@ extern void			sc_object_entry_free(sc_object_entry_t *entry);
 extern void *			sc_object_entry_map_write(sc_object_entry_t *entry);
 extern void			sc_object_entry_flush(sc_object_entry_t *entry);
 extern sc_object_entry_t *	sc_object_entry_load(const char *path);
+extern unsigned long		sc_object_entry_get_next_hit(const sc_object_entry_t *entry, unsigned long next_addr, unsigned long text_offset);
 
 extern void			sc_sampling_activate_thread(void);
 extern int			sc_sampling_enable(const sc_context_t *ctx);

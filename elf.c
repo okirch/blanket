@@ -427,6 +427,7 @@ sc_elf_object_extract_symbols(const sc_elf_object_t *object, sc_coverage_t *cove
 			sc_coverage_add_symbol(coverage, elfsym->name, elfsym->sym.st_value - reloc, elfsym->sym.st_size);
 	}
 
+	coverage->text_reloc = reloc;
 	coverage->text_offset = section->hdr.sh_offset;
 	coverage->text_size = section->hdr.sh_size;
 }
