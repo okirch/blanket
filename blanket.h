@@ -216,6 +216,9 @@ extern void			sc_source_file_add_line_hit(sc_source_file_t *sf, unsigned int lin
 extern void			sc_dwarf_dump(const char *path);
 extern void			sc_dwarf_extract_coverage(const sc_object_entry_t *entry, sc_coverage_t *coverage);
 
+/* Utility functions */
+extern bool			sc_squeeze_path(const char *path, char *buffer, size_t bufsz);
+
 /* Functions related to reporting */
 extern sc_report_t *		sc_report_alloc(int details);
 extern int			sc_report_process_file(sc_report_t *, const char *path);

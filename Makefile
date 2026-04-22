@@ -3,9 +3,9 @@ CFLAGS	= -Wall -g -fPIC -D_GNU_SOURCE
 LDFLAGS	= -shared -Wl,-soname -Wl,libblanket.so.0
 LIBS	= -ldw -lelf -ldl -lncurses
 
-LIBOBJS	= context.o control.o object.o sampling.o kernel.o hooks.o
+LIBOBJS	= context.o control.o object.o sampling.o kernel.o hooks.o util.o
 
-UTILOBJS= blanket.o report.o coverage.o elf.o object.o control.o dwarf.o
+UTILOBJS= blanket.o report.o coverage.o elf.o object.o control.o dwarf.o util.o
 
 all:	libblanket.so blanket
 
@@ -36,3 +36,4 @@ kernel.o: kernel.c blanket.h
 object.o: object.c blanket.h
 report.o: report.c blanket.h
 sampling.o: sampling.c blanket.h
+util.o: util.c blanket.h

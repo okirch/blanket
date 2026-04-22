@@ -58,7 +58,7 @@ sc_object_entry_populate_header(const sc_object_entry_t *entry)
 	memcpy(hdr->magic, entry->magic, sizeof(hdr->magic));
 
 	gettimeofday(&hdr->timestamp, NULL);
-	strncpy(hdr->path, entry->path, sizeof(hdr->path) - 1);
+	sc_squeeze_path(entry->path, hdr->path, sizeof(hdr->path));
 }
 
 static bool
