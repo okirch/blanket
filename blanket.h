@@ -81,7 +81,7 @@ typedef struct {
 		uint32_t	dev;
 		uint64_t	ino;
 		char		path[128];
-	} file;
+	} file, application;
 
 	struct timeval		timestamp;
 
@@ -100,11 +100,14 @@ typedef struct {
 	uint16_t		dev;
 	uint64_t		ino;
 	char *			path;
+
+	unsigned int		counter;
 } sc_object_reference_t;
 
 /* In-memory context */
 typedef struct {
 	sc_object_reference_t	file;
+	sc_object_reference_t	application;
 
 	uint16_t		flags;
 
@@ -133,6 +136,8 @@ typedef struct {
 
 typedef struct {
 	const sc_control_t *	control;
+
+	sc_object_reference_t	app_ref;
 
 	unsigned int		num_entries;
 	sc_object_entry_t **	entries;

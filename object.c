@@ -48,6 +48,12 @@ sc_object_entry_populate_header(const sc_object_entry_t *entry)
 	hdr->file.ino = entry->file.ino;
 	sc_squeeze_path(entry->file.path, hdr->file.path, sizeof(hdr->file.path));
 
+	if (entry->application.ino) {
+		hdr->application.dev = entry->application.dev;
+		hdr->application.ino = entry->application.ino;
+		sc_squeeze_path(entry->application.path, hdr->application.path, sizeof(hdr->application.path));
+	}
+
 	hdr->addr_shift = entry->addr_shift;
 	hdr->mode = entry->mode;
 
@@ -68,6 +74,7 @@ sc_object_entry_from_header(sc_object_entry_t *entry)
 		return false;
 
 	sc_object_reference_set(&entry->file, hdr->file.dev, hdr->file.ino, hdr->file.path);
+	sc_object_reference_set(&entry->application, hdr->application.dev, hdr->application.ino, hdr->application.path);
 	entry->mode = hdr->mode;
 	entry->addr_shift = hdr->addr_shift;
 	if (hdr->test_id[0])

@@ -37,10 +37,19 @@ sc_context_init(const sc_control_t *ctl)
 static void
 sc_context_enable_object(const sc_context_t *ctx, sc_object_entry_t *entry)
 {
+	const sc_object_reference_t *app_ref = NULL;
+
+	if (ctx->app_ref.path)
+		app_ref = &ctx->app_ref;
+
 	if (!(entry->flags & SC_CONTEXT_ACTIVE_F)) {
 		memcpy(entry->magic, entry->start_addr, 8);
 		entry->addr_shift = sc_context_get_addr_shift(ctx);
 		entry->test_id = sc_context_get_test_id(ctx);
+
+		if (app_ref)
+			sc_object_reference_copy(&entry->application, app_ref);
+
 		if (sc_object_entry_map_write(entry)) {
 			if (sc_tracing)
 				printf("Enabled %s; granularity %u; addr_shift %u\n",
@@ -90,6 +99,11 @@ sc_context_update_mapping(sc_context_t *ctx, const sc_object_entry_t *entry)
 	const sc_control_t *ctl = ctx->control;
 	const sc_control_entry_t *ctl_entry;
 	unsigned int i;
+
+	/* Even with address space randomization, the application is still the first
+	 * thing that gets mapped */
+	if (ctx->app_ref.path == NULL)
+		sc_object_reference_copy(&ctx->app_ref, &entry->file);
 
 	/* Check if we're interested in tracing this */
 	if (ctl->measure_all) {

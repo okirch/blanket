@@ -162,6 +162,9 @@ typedef struct {
 	sc_object_reference_t	file;
 
 	unsigned int		num_hits;
+
+	unsigned int		num_references;
+	sc_object_reference_t *	references;
 } sc_object_touch_t;
 
 struct sc_report {
@@ -171,7 +174,7 @@ struct sc_report {
 	sc_object_touch_t *	objects;
 };
 
-static void
+static sc_object_touch_t *
 sc_report_add_touched_object(sc_report_t *report, const sc_object_entry_t *entry)
 {
 	sc_object_touch_t *ob;
@@ -181,7 +184,7 @@ sc_report_add_touched_object(sc_report_t *report, const sc_object_entry_t *entry
 		ob = &report->objects[i];
 		if (sc_object_reference_same(&ob->file, &entry->file)) {
 			ob->num_hits++;
-			return;
+			return ob;
 		}
 	}
 
@@ -193,6 +196,34 @@ sc_report_add_touched_object(sc_report_t *report, const sc_object_entry_t *entry
 
 	sc_object_reference_copy(&ob->file, &entry->file);
 	ob->num_hits = 1;
+	return ob;
+}
+
+static void
+sc_object_touched_by(sc_object_touch_t *ob, const sc_object_reference_t *app_ref)
+{
+	sc_object_reference_t *ref;
+	unsigned int i;
+
+	if (sc_object_reference_same(&ob->file, app_ref))
+		return;
+
+	for (i = 0; i < ob->num_references; ++i) {
+		ref = &ob->references[i];
+		if (sc_object_reference_same(ref, app_ref)) {
+			ref->counter += 1;
+			return;
+		}
+	}
+
+	if ((ob->num_references % 16) == 0)
+		ob->references = realloc(ob->references, (ob->num_references + 16) * sizeof(ob->references[0]));
+
+	ref = &ob->references[ob->num_references++];
+	memset(ref, 0, sizeof(*ref));
+
+	sc_object_reference_copy(ref, app_ref);
+	ref->counter = 1;
 }
 
 sc_report_t *
@@ -208,12 +239,17 @@ sc_report_alloc(int details)
 void
 sc_report_trailer(sc_report_t *report)
 {
-	unsigned int i;
+	unsigned int i, j;
 
 	for (i = 0; i < report->num_objects; ++i) {
 		sc_object_touch_t *ob = &report->objects[i];
 
 		printf(" %3u %s\n", ob->num_hits, ob->file.path);
+		for (j = 0; j < ob->num_references; ++j) {
+			sc_object_reference_t *ref = &ob->references[j];
+
+			printf("        used by %s (%u)\n", ref->path, ref->counter);
+		}
 	}
 }
 
@@ -231,7 +267,11 @@ sc_report_process_file(sc_report_t *report, const char *path)
 	}
 
 	if (entry->mode == SC_MODE_TOUCH) {
-		sc_report_add_touched_object(report, entry);
+		sc_object_touch_t *ob;
+
+		ob = sc_report_add_touched_object(report, entry);
+		if (ob && entry->application.ino != 0)
+			sc_object_touched_by(ob, &entry->application);
 		return 0;
 	}
 

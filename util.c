@@ -39,7 +39,7 @@ sc_object_reference_copy(sc_object_reference_t *dst, const sc_object_reference_t
 void
 sc_object_reference_set(sc_object_reference_t *dst, dev_t dev, ino_t ino, const char *path)
 {
-	dst->path = strdup(path);
+	dst->path = (path && path[0])? strdup(path) : NULL;
 	dst->dev = dev;
 	dst->ino = ino;
 }
