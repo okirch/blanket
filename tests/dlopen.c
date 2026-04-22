@@ -42,5 +42,6 @@ main(void)
 			accum += sqrt((double) i);
 	}
 
+	printf("Performed %u sqrt calls\n", i);
 	return (accum == 0);
 }
