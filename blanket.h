@@ -142,6 +142,15 @@ typedef struct {
 } sc_symbol_t;
 
 typedef struct {
+	char *			filename;
+	unsigned int		compile_unit;
+	unsigned int		file_id;
+
+	unsigned int		nwords;
+	uint32_t *		linemap;
+} sc_source_file_t;
+
+typedef struct {
 	unsigned int		global_hits;
 	double			global_coverage;
 
@@ -152,6 +161,9 @@ typedef struct {
 
 	unsigned int		nsymbols;
 	sc_symbol_t *		symbol;
+
+	unsigned int		nsourcefiles;
+	sc_source_file_t *	sourcefiles;
 } sc_coverage_t;
 
 struct sc_elf_object;
@@ -195,6 +207,8 @@ extern const sc_symbol_t *	sc_elf_locate_symbol(const sc_object_entry_t *, const
 extern sc_coverage_t *		sc_coverage_extract(const sc_object_entry_t *);
 extern void			sc_coverage_add_symbol(sc_coverage_t *, const char *, unsigned long, unsigned long);
 extern void			sc_coverage_free(sc_coverage_t *);
+extern sc_source_file_t *	sc_coverage_add_source_file(sc_coverage_t *, unsigned int, const char *);
+extern void			sc_source_file_add_line_hit(sc_source_file_t *sf, unsigned int lineno);
 extern void			sc_dwarf_dump(const char *path);
 extern sc_dwarf_searchctx_t *	sc_dwarf_search_create(const char *filename, const char *function);
 extern void			sc_dwarf_search_free(sc_dwarf_searchctx_t *);

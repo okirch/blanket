@@ -108,6 +108,47 @@ sc_symbol_table_sort(sc_coverage_t *coverage)
 	qsort(coverage->symbol, coverage->nsymbols, sizeof(coverage->symbol[0]), sc_symbol_cmp);
 }
 
+sc_source_file_t *
+sc_coverage_add_source_file(sc_coverage_t *coverage, unsigned int compile_unit, const char *filename)
+{
+	sc_source_file_t *sf;
+	unsigned int i;
+
+	for (i = 0; i < coverage->nsourcefiles; ++i) {
+		sf = &coverage->sourcefiles[i];
+
+		if (sf->compile_unit == compile_unit && !strcmp(sf->filename, filename))
+			return sf;
+	}
+
+        if ((coverage->nsourcefiles % 8) == 0)
+		coverage->sourcefiles = realloc(coverage->sourcefiles, (coverage->nsourcefiles + 8) * sizeof(coverage->sourcefiles[0]));
+
+	sf = &coverage->sourcefiles[coverage->nsourcefiles++];
+        memset(sf, 0, sizeof(*sf));
+
+	sf->compile_unit = compile_unit;
+	sf->filename = strdup(filename);
+
+	return sf;
+}
+
+void
+sc_source_file_add_line_hit(sc_source_file_t *sf, unsigned int lineno)
+{
+	unsigned int index = lineno / 32;
+
+	if (index >= sf->nwords) {
+		unsigned int nwords = (index + 16) & ~15;
+
+		sf->linemap = realloc(sf->linemap, nwords * sizeof(sf->linemap[0]));
+		while (sf->nwords < nwords)
+			sf->linemap[sf->nwords++] = 0;
+	}
+
+	sf->linemap[index] |= (1 << (lineno % 32));
+}
+
 sc_coverage_t *
 sc_coverage_extract(const sc_object_entry_t *entry)
 {
