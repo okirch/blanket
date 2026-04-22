@@ -185,7 +185,7 @@ sc_dwarf_extract_coverage(const sc_object_entry_t *entry, sc_coverage_t *coverag
 	sc_dwarf_iterator_t *iter;
 	sc_dwarf_cu_ctx_t *cu;
 
-	if ((iter = sc_dwarf_open(entry->path)) == NULL)
+	if ((iter = sc_dwarf_open(sc_object_entry_get_path(entry))) == NULL)
 		return;
 
 	while ((cu = sc_dwarf_next_cu(iter)) != NULL) {

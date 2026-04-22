@@ -147,15 +147,17 @@ sc_control_add_file(sc_control_t *ctl, const char *path)
 int
 sc_control_add_file_symbol(sc_control_t *ctl, const char *path, const char *symbol_name)
 {
-	sc_object_entry_t fake_object = { .path = (char *) path };
+	sc_object_entry_t fake_object;
 	sc_control_entry_t *entry;
 	const sc_symbol_t *symbol;
 
 	if ((entry = __sc_control_add_file(ctl, path)) == NULL)
 		return -1;
 
-	fake_object.dev = entry->dev;
-	fake_object.ino = entry->ino;
+	memset(&fake_object, 0, sizeof(fake_object));
+	fake_object.file.path = (char *) path;
+	fake_object.file.dev = entry->dev;
+	fake_object.file.ino = entry->ino;
 
 	if (!(symbol = sc_elf_locate_symbol(&fake_object, symbol_name))) {
 		fprintf(stderr, "symbol %s not found in %s\n", symbol_name, path);

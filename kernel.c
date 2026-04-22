@@ -51,20 +51,20 @@ sc_mapping_parse_exec(char *buffer)
 		return NULL;
 
 	/* device: 00:28 */
-	entry.dev = strtoul(vec[3], &s, 16) << 8;
+	entry.file.dev = strtoul(vec[3], &s, 16) << 8;
 	if (*s != ':')
 		return NULL;
-	entry.dev |= strtoul(s + 1, &s, 16);
+	entry.file.dev |= strtoul(s + 1, &s, 16);
 	if (*s != '\0')
 		return NULL;
 
 	/* inode: decimal long */
-	entry.ino = strtoul(vec[4], &s, 0);
+	entry.file.ino = strtoul(vec[4], &s, 0);
 	if (*s != '\0')
 		return NULL;
 
 	/* beware, we do not duplicate the string. */
-	entry.path = vec[5];
+	entry.file.path = vec[5];
 	return &entry;
 }
 

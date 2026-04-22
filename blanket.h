@@ -76,8 +76,13 @@ typedef struct {
  */
 typedef struct {
 	uint32_t		format;
-	uint32_t		dev;
-	uint64_t		ino;
+
+	struct {
+		uint32_t	dev;
+		uint64_t	ino;
+		char		path[128];
+	} file;
+
 	struct timeval		timestamp;
 
 	uint8_t			mode;
@@ -89,17 +94,19 @@ typedef struct {
 	/* The first 8 bytes of the mapped 'thing'. For ELF binaries,
 	 * this should contain the ELF signature */
 	unsigned char		magic[8];
-
-	char			path[512];
 } sc_output_header_t;
+
+typedef struct {
+	uint16_t		dev;
+	uint64_t		ino;
+	char *			path;
+} sc_object_reference_t;
 
 /* In-memory context */
 typedef struct {
-	char *			path;
-	uint16_t		flags;
+	sc_object_reference_t	file;
 
-	uint16_t		dev;
-	uint64_t		ino;
+	uint16_t		flags;
 
 	caddr_t			start_addr;
 	caddr_t			end_addr;
@@ -201,6 +208,16 @@ extern void			sc_object_entry_flush(sc_object_entry_t *entry);
 extern sc_object_entry_t *	sc_object_entry_load(const char *path);
 extern unsigned long		sc_object_entry_get_next_hit(const sc_object_entry_t *entry, unsigned long next_addr, unsigned long text_offset);
 
+extern void			sc_object_reference_copy(sc_object_reference_t *dst, const sc_object_reference_t *src);
+extern void			sc_object_reference_set(sc_object_reference_t *dst, dev_t dev, ino_t ino, const char *path);
+extern void			sc_object_reference_destroy(sc_object_reference_t *dst);
+
+static inline bool
+sc_object_reference_same(const sc_object_reference_t *a, const sc_object_reference_t *b)
+{
+	return a->dev == b->dev && a->ino == b->ino;
+}
+
 extern void			sc_sampling_activate_thread(void);
 extern int			sc_sampling_enable(const sc_context_t *ctx);
 extern int			sc_sampling_ptrace_function(caddr_t start_addr, caddr_t end_addr);
@@ -275,6 +292,12 @@ static inline const char *
 sc_context_get_test_id(const sc_context_t *ctx)
 {
 	return ctx->control->test_id;
+}
+
+static inline const char *
+sc_object_entry_get_path(const sc_object_entry_t *entry)
+{
+	return entry->file.path;
 }
 
 #endif /* BLANKET_H */

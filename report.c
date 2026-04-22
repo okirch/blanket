@@ -159,9 +159,7 @@ static sc_source_renderer_t	annotated_source_renderer = {
 };
 
 typedef struct {
-	dev_t			dev;
-	ino_t			ino;
-	char *			path;
+	sc_object_reference_t	file;
 
 	unsigned int		num_hits;
 } sc_object_touch_t;
@@ -181,7 +179,7 @@ sc_report_add_touched_object(sc_report_t *report, const sc_object_entry_t *entry
 
 	for (i = 0; i < report->num_objects; ++i) {
 		ob = &report->objects[i];
-		if (ob->dev == entry->dev && ob->ino == entry->ino) {
+		if (sc_object_reference_same(&ob->file, &entry->file)) {
 			ob->num_hits++;
 			return;
 		}
@@ -193,9 +191,7 @@ sc_report_add_touched_object(sc_report_t *report, const sc_object_entry_t *entry
 	ob = &report->objects[report->num_objects++];
 	memset(ob, 0, sizeof(*ob));
 
-	ob->dev = entry->dev;
-	ob->ino = entry->ino;
-	ob->path = strdup(entry->path);
+	sc_object_reference_copy(&ob->file, &entry->file);
 	ob->num_hits = 1;
 }
 
@@ -217,7 +213,7 @@ sc_report_trailer(sc_report_t *report)
 	for (i = 0; i < report->num_objects; ++i) {
 		sc_object_touch_t *ob = &report->objects[i];
 
-		printf(" %3u %s\n", ob->num_hits, ob->path);
+		printf(" %3u %s\n", ob->num_hits, ob->file.path);
 	}
 }
 
@@ -246,7 +242,7 @@ sc_report_process_file(sc_report_t *report, const char *path)
 	if (coverage == NULL)
 		return -1;
 
-	printf("%s\n", entry->path);
+	printf("%s\n", entry->file.path);
 	printf("Mode:             %u\n", entry->mode);
 	printf("ELF text section: %08lx-%08lx\n",
 			coverage->text_offset,

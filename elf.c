@@ -49,9 +49,7 @@ typedef struct sc_elf_object {
 	struct sc_elf_object *	next;
 	bool			in_cache;
 
-	dev_t			dev;
-	ino_t			ino;
-	char *			path;
+	sc_object_reference_t	file;
 
 	unsigned int		nsections;
 	sc_elf_section_t *	section;
@@ -301,20 +299,27 @@ sc_elf_object_locate_sections(sc_elf_open_file_t *file, sc_elf_object_t *mapping
 }
 
 static sc_elf_object_t *
-sc_elf_object_load(const char *path)
+sc_elf_object_load(const sc_object_reference_t *file_ref)
 {
 	sc_elf_object_t *object;
 	sc_elf_open_file_t *file;
 
-	if (!(file = sc_elf_open(path))) {
-		fprintf(stderr, "Cannot open %s: %m\n", path);
+	if (!(file = sc_elf_open(file_ref->path))) {
+		fprintf(stderr, "Cannot open %s: %m\n", file_ref->path);
 		return NULL;
 	}
 
 	object = calloc(1, sizeof(*object));
-	object->path = strdup(path);
+
+	/* Note: the dev/ino of this reference will be those of the
+	 * ELF binary at the time the coverage report was created.
+	 * We may be running on a different system when we get here..
+	 * We should perform some checks to ensure it's still the same
+	 * binary - even if the dev/ino have changed. */
+	sc_object_reference_copy(&object->file, file_ref);
+
 	if (!sc_elf_object_locate_sections(file, object)) {
-		fprintf(stderr, "Cannot find .text section in %s\n", path);
+		fprintf(stderr, "Cannot find .text section in %s\n", file_ref->path);
 		sc_elf_object_free(object);
 		object = NULL;
 	} else {
@@ -354,7 +359,7 @@ sc_elf_object_free(sc_elf_object_t *object)
 static sc_elf_object_t *
 sc_elf_object_load_debug_link(sc_elf_object_t *object)
 {
-	const char *path = object->path;
+	const char *path = object->file.path;
 	char *debug_dir = NULL, *debug_path = NULL, *sp;
 
 	if (object->debug_link == NULL || path[0] != '/')
@@ -367,10 +372,11 @@ sc_elf_object_load_debug_link(sc_elf_object_t *object)
 	asprintf(&debug_path, "%s%s", debug_dir, object->debug_link);
 
 	if (access(debug_path, R_OK) == 0) {
-		object->debug_object = sc_elf_object_load(debug_path);
+		sc_object_reference_t debug_ref = { .path = debug_path };
+		object->debug_object = sc_elf_object_load(&debug_ref);
 		if (object->debug_object == NULL)
 			fprintf(stderr, "%s: failed to load ELF debug symbols from %s\n",
-					object->path, debug_path);
+					object->file.path, debug_path);
 	}
 	free(debug_dir);
 	free(debug_path);
@@ -388,19 +394,16 @@ sc_elf_get_object_cached(const sc_object_entry_t *entry)
 	sc_elf_object_t *object;
 
 	for (object = sc_elf_object_cache; object; object = object->next) {
-		if (object->dev == entry->dev && object->ino == entry->ino)
+		if (sc_object_reference_same(&object->file, &entry->file))
 			return object;
 	}
 
-	object = sc_elf_object_load(entry->path);
+	object = sc_elf_object_load(&entry->file);
 	if (object == NULL)
 		return NULL;
 
 	if (object->debug_link)
 		sc_elf_object_load_debug_link(object);
-
-	object->dev = entry->dev;
-	object->ino = entry->ino;
 
 	object->next = sc_elf_object_cache;
 	sc_elf_object_cache = object;

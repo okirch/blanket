@@ -43,7 +43,8 @@ sc_context_enable_object(const sc_context_t *ctx, sc_object_entry_t *entry)
 		entry->test_id = sc_context_get_test_id(ctx);
 		if (sc_object_entry_map_write(entry)) {
 			if (sc_tracing)
-				printf("Enabled %s; granularity %u; addr_shift %u\n", entry->path,
+				printf("Enabled %s; granularity %u; addr_shift %u\n",
+						sc_object_entry_get_path(entry),
 						sc_context_get_granularity(ctx),
 						entry->addr_shift);
 			entry->flags |= SC_CONTEXT_ACTIVE_F;
@@ -95,9 +96,9 @@ sc_context_update_mapping(sc_context_t *ctx, const sc_object_entry_t *entry)
 		if (sc_tracing)
 			printf("Tracing all objects\n");
 	} else
-	if ((ctl_entry = sc_control_get_entry(ctl, entry->dev, entry->ino, entry->path)) != NULL) {
+	if ((ctl_entry = sc_control_get_entry(ctl, entry->file.dev, entry->file.ino, sc_object_entry_get_path(entry))) != NULL) {
 		if (sc_tracing)
-			printf("Tracking %s\n", entry->path);
+			printf("Tracking %s\n", sc_object_entry_get_path(entry));
 	} else {
 		return;
 	}
@@ -106,11 +107,11 @@ sc_context_update_mapping(sc_context_t *ctx, const sc_object_entry_t *entry)
 		sc_object_entry_t *e = ctx->entries[i];
 
 		if (e->start_addr == entry->start_addr && e->end_addr == entry->end_addr
-		 && e->dev == entry->dev && e->ino == entry->ino) {
+		 && sc_object_reference_same(&e->file, &entry->file)) {
 			/* FIXME: what would we do if the mapping changed?
 			 * Can there be multiple mappings of the same object? */
 			if (sc_tracing)
-				printf("Existing mapping of %s\n", entry->path);
+				printf("Existing mapping of %s\n", sc_object_entry_get_path(entry));
 			e->flags |= SC_CONTEXT_SEEN_F;
 			return;
 		}
@@ -144,8 +145,10 @@ sc_context_rescan(void)
 		return 0;
 
 	while ((map_entry = sc_procfs_maps_getent(mapfp)) != NULL) {
+		const char *path = sc_object_entry_get_path(map_entry);
+
 		/* ignore [vdso] */
-		if (map_entry->path[0] == '[')
+		if (path == NULL || path[0] == '[')
 			continue;
 
 		sc_context_update_mapping(ctx, map_entry);

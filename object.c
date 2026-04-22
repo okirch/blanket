@@ -25,16 +25,12 @@ sc_object_entry_clone(const sc_object_entry_t *entry)
 	sc_object_entry_t *e;
 
 	e = calloc(1, sizeof(*e));
-	e->dev = entry->dev;
-	e->ino = entry->ino;
+	sc_object_reference_copy(&e->file, &entry->file);
 	e->start_addr = entry->start_addr;
 	e->end_addr = entry->end_addr;
 	e->mode = entry->mode;
 	e->addr_shift = entry->addr_shift;
 	e->test_id = entry->test_id;
-
-	if (entry->path != NULL)
-		e->path = strdup(entry->path);
 	return e;
 }
 
@@ -47,8 +43,11 @@ sc_object_entry_populate_header(const sc_object_entry_t *entry)
 		return;
 
 	hdr->format = SC_CONTROL_FILE_VERSION;
-	hdr->dev = entry->dev;
-	hdr->ino = entry->ino;
+
+	hdr->file.dev = entry->file.dev;
+	hdr->file.ino = entry->file.ino;
+	sc_squeeze_path(entry->file.path, hdr->file.path, sizeof(hdr->file.path));
+
 	hdr->addr_shift = entry->addr_shift;
 	hdr->mode = entry->mode;
 
@@ -58,7 +57,6 @@ sc_object_entry_populate_header(const sc_object_entry_t *entry)
 	memcpy(hdr->magic, entry->magic, sizeof(hdr->magic));
 
 	gettimeofday(&hdr->timestamp, NULL);
-	sc_squeeze_path(entry->path, hdr->path, sizeof(hdr->path));
 }
 
 static bool
@@ -69,9 +67,7 @@ sc_object_entry_from_header(sc_object_entry_t *entry)
 	if (hdr->format != SC_CONTROL_FILE_VERSION)
 		return false;
 
-	entry->path = strdup(hdr->path);
-	entry->dev = hdr->dev;
-	entry->ino = hdr->ino;
+	sc_object_reference_set(&entry->file, hdr->file.dev, hdr->file.ino, hdr->file.path);
 	entry->mode = hdr->mode;
 	entry->addr_shift = hdr->addr_shift;
 	if (hdr->test_id[0])
@@ -85,8 +81,7 @@ sc_object_entry_from_header(sc_object_entry_t *entry)
 void
 sc_object_entry_free(sc_object_entry_t *entry)
 {
-	if (entry->path != NULL)
-		free(entry->path);
+	sc_object_reference_destroy(&entry->file);
 	if (entry->map_base)
 		munmap(entry->map_base, entry->map_len);
 	free(entry);
@@ -101,7 +96,7 @@ sc_object_entry_open_write(const sc_object_entry_t *entry)
 
 	if (entry->test_id) {
 		snprintf(namebase, sizeof(namebase), "coverage-%s-%04x:%08lx",
-				entry->test_id, entry->dev, (long) entry->ino);
+				entry->test_id, entry->file.dev, (long) entry->file.ino);
 		while ((s = strchr(namebase, '/')) != NULL)
 			*s = '_';
 	}

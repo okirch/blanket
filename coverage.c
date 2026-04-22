@@ -158,7 +158,7 @@ sc_coverage_extract(const sc_object_entry_t *entry, int flags)
 	sc_symbol_t *sym = NULL;
 
 	if (memcmp(entry->magic, "\177ELF", 4)) {
-		fprintf(stderr, "%s: does not look like an ELF binary\n", entry->path);
+		fprintf(stderr, "%s: does not look like an ELF binary\n", sc_object_entry_get_path(entry));
 		return NULL;
 	}
 
@@ -169,7 +169,7 @@ sc_coverage_extract(const sc_object_entry_t *entry, int flags)
 	sc_symbol_table_sort(coverage);
 
 	if (coverage->text_size == 0) {
-		fprintf(stderr, "%s: no .text section found\n", entry->path);
+		fprintf(stderr, "%s: no .text section found\n", sc_object_entry_get_path(entry));
 		sc_coverage_free(coverage);
 		return NULL;
 	}
