@@ -27,12 +27,13 @@ static int		opt_mode = -1;
 
 enum {
 	SC_DETAIL_SYMBOLS	= 0x0001,
+	SC_DETAIL_SOURCELINES	= 0x0002,
 	SC_DETAIL_NONE		= 0xFFFF,
 };
 static int		opt_details = 0;
 
 enum {
-	OPT_SYMBOLS, OPT_NO_DETAILS,
+	OPT_SYMBOLS, OPT_SOURCELINES, OPT_NO_DETAILS,
 };
 
 static struct option	long_options[] = {
@@ -42,6 +43,7 @@ static struct option	long_options[] = {
 	{ "granularity",	required_argument,	NULL,	'G' },
 	{ "sampling-interval",	required_argument,	NULL,	'S' },
 	{ "symbols",		no_argument,		NULL,	OPT_SYMBOLS },
+	{ "sourcelines",	no_argument,		NULL,	OPT_SOURCELINES },
 	{ "no-details",		no_argument,		NULL,	OPT_NO_DETAILS },
 	{ "test-id",		required_argument,	NULL,	'T' },
 	{ "help",		no_argument,		NULL,	'h' },
@@ -85,6 +87,10 @@ main(int argc, char **argv)
 
 		case OPT_SYMBOLS:
 			opt_details |= SC_DETAIL_SYMBOLS;
+			break;
+
+		case OPT_SOURCELINES:
+			opt_details |= SC_DETAIL_SOURCELINES;
 			break;
 
 		case OPT_NO_DETAILS:
@@ -344,6 +350,7 @@ show_one_report(const char *path)
 {
 	sc_object_entry_t *entry;
 	sc_coverage_t *coverage;
+	int flags = 0;
 
 	entry = sc_object_entry_load(path);
 	if (entry == NULL) {
@@ -351,7 +358,10 @@ show_one_report(const char *path)
 		return -1;
 	}
 
-	coverage = sc_coverage_extract(entry, 0);
+	if (opt_details & SC_DETAIL_SOURCELINES)
+		flags |= SC_COVERAGE_SOURCE;
+
+	coverage = sc_coverage_extract(entry, flags);
 	if (coverage == NULL)
 		return -1;
 
@@ -385,6 +395,26 @@ show_one_report(const char *path)
 
 		if (coverage->unknown_symbol.num_hits)
 			printf("  %6u hits in code without symbol\n", coverage->unknown_symbol.num_hits);
+	}
+
+	if (opt_details & SC_DETAIL_SOURCELINES) {
+		unsigned int i, j;
+
+		printf("Source files and their coverage:\n");
+		for (i = 0; i < coverage->nsourcefiles; ++i) {
+			sc_source_file_t *file = &coverage->sourcefiles[i];
+
+			printf("%s\n", file->filename);
+			for (j = 0; j < file->nwords; ++j) {
+				uint32_t word = file->linemap[j], mask;
+				unsigned int line = 32 * j;
+
+				for (mask = 1; mask; mask <<= 1, ++line) {
+					if (word & mask)
+						printf("  %u\n", line);
+				}
+			}
+		}
 	}
 
 	printf("\n");
