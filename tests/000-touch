@@ -1,0 +1,49 @@
+#!/bin/bash
+
+TMPDIR=$(mktemp -d /tmp/test.XXXXXX)
+trap "rm -vrf $TMPDIR" 0
+
+export BLANKET_CONTROL=$TMPDIR/blanket.conf
+set -e
+
+./blanket init --mode touch
+./blanket add /usr/bin/sha256sum /lib64/libc.so.*
+
+echo "*** configuration"
+./blanket show
+echo
+
+echo "*** running test command"
+rm -f /tmp/coverage-*
+export LD_PRELOAD=$PWD/libblanket.so
+dd if=/dev/urandom bs=1024k count=512 | sha256sum -
+echo
+
+echo "*** report"
+./blanket report /tmp/coverage-*
+echo
+
+found=$TMPDIR/found
+touch $found
+./blanket report /tmp/coverage-* | (
+	A=""
+	B=""
+
+	while read a b c; do
+		case "$b" in
+		*/libc.*)
+			A=yes;;
+		*/sha256sum)
+			B=yes;;
+		esac
+	done
+	echo "libc=$A binary=$B" > $found
+)
+
+result="$(cat $found)"
+if [ "$result" = "libc=yes binary=yes" ]; then
+	echo "PASS: it seems we detected coverage of both application and libc"
+else
+	echo "FAIL: Incomplete coverage"
+	exit 1
+fi
