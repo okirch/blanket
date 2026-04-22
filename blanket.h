@@ -206,6 +206,9 @@ extern int			sc_context_rescan(void);
 extern void			sc_context_update_mapping(sc_context_t *ctx, const sc_object_entry_t *entry);
 extern void			sc_context_add_sample(sc_context_t *ctx, caddr_t ip);
 
+extern bool			sc_string_to_mode(const char *string, int *ret_p);
+extern const char *		sc_mode_to_string(int mode);
+
 extern sc_object_entry_t *	sc_object_entry_clone(const sc_object_entry_t *entry);
 extern void			sc_object_entry_free(sc_object_entry_t *entry);
 extern void *			sc_object_entry_map_write(sc_object_entry_t *entry);

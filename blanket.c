@@ -67,17 +67,7 @@ main(int argc, char **argv)
 			break;
 
 		case 'M':
-			if (!strcmp(optarg, "touch"))
-				opt_mode = SC_MODE_TOUCH;
-			else if (!strcmp(optarg, "timer"))
-				opt_mode = SC_MODE_TIMER;
-			else if (!strcmp(optarg, "mcount"))
-				opt_mode = SC_MODE_MCOUNT;
-			else if (!strcmp(optarg, "ptrace"))
-				opt_mode = SC_MODE_PTRACE;
-			else if (!strcmp(optarg, "plt"))
-				opt_mode = SC_MODE_PLT;
-			else {
+			if (!sc_string_to_mode(optarg, &opt_mode)) {
 				fprintf(stderr, "Invalid sampling mode \"%s\"\n", optarg);
 				usage(1);
 			}
@@ -300,14 +290,13 @@ do_show(void)
 
 	if (ctl->test_id[0])
 		printf("Test ID:              %s\n", ctl->test_id);
+	printf("Mode:                 %s\n", sc_mode_to_string(ctl->mode));
 
 	switch (ctl->mode) {
 	case SC_MODE_TOUCH:
-		printf("Mode:                 touch\n");
 		break;
 
 	case SC_MODE_TIMER:
-		printf("Mode:                 timer\n");
 		printf("Sampling interval:    %d nsec\n", ctl->sampling_interval);
 		printf("Address granularity:  %u\n", ctl->granularity);
 		printf("Address shift:        %u%s\n", ctl->addr_shift,
@@ -315,15 +304,12 @@ do_show(void)
 		break;
 
 	case SC_MODE_MCOUNT:
-		printf("Mode:                 mcount\n");
 		break;
 
 	case SC_MODE_PTRACE:
-		printf("Mode:                 ptrace\n");
 		break;
 
 	case SC_MODE_PLT:
-		printf("Mode:                 plt\n");
 		break;
 
 	default:
