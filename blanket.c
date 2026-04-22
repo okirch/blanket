@@ -74,7 +74,9 @@ main(int argc, char **argv)
 			break;
 
 		case 'M':
-			if (!strcmp(optarg, "timer"))
+			if (!strcmp(optarg, "touch"))
+				opt_mode = SC_MODE_TOUCH;
+			else if (!strcmp(optarg, "timer"))
 				opt_mode = SC_MODE_TIMER;
 			else if (!strcmp(optarg, "mcount"))
 				opt_mode = SC_MODE_MCOUNT;
@@ -307,6 +309,10 @@ do_show(void)
 		printf("Test ID:              %s\n", ctl->test_id);
 
 	switch (ctl->mode) {
+	case SC_MODE_TOUCH:
+		printf("Mode:                 touch\n");
+		break;
+
 	case SC_MODE_TIMER:
 		printf("Mode:                 timer\n");
 		printf("Sampling interval:    %d nsec\n", ctl->sampling_interval);
@@ -502,8 +508,71 @@ static sc_source_renderer_t	annotated_source_renderer = {
 	.close = annotated_source_renderer_close,
 };
 
+typedef struct {
+	dev_t			dev;
+	ino_t			ino;
+	char *			path;
+
+	unsigned int		num_hits;
+} sc_object_touch_t;
+
+typedef struct {
+	int			details;
+
+	unsigned int		num_objects;
+	sc_object_touch_t *	objects;
+} sc_report_t;
+
+static void
+sc_report_add_touched_object(sc_report_t *report, const sc_object_entry_t *entry)
+{
+	sc_object_touch_t *ob;
+	unsigned int i;
+
+	for (i = 0; i < report->num_objects; ++i) {
+		ob = &report->objects[i];
+		if (ob->dev == entry->dev && ob->ino == entry->ino) {
+			ob->num_hits++;
+			return;
+		}
+	}
+
+	if ((report->num_objects % 16) == 0)
+		report->objects = realloc(report->objects, (report->num_objects + 16) * sizeof(report->objects[0]));
+
+	ob = &report->objects[report->num_objects++];
+	memset(ob, 0, sizeof(*ob));
+
+	ob->dev = entry->dev;
+	ob->ino = entry->ino;
+	ob->path = strdup(entry->path);
+	ob->num_hits = 1;
+}
+
+sc_report_t *
+sc_report_alloc(int details)
+{
+	sc_report_t *report;
+
+	report = calloc(1, sizeof(*report));
+	report->details = details;
+	return report;
+}
+
+void
+sc_report_trailer(sc_report_t *report)
+{
+	unsigned int i;
+
+	for (i = 0; i < report->num_objects; ++i) {
+		sc_object_touch_t *ob = &report->objects[i];
+
+		printf(" %3u %s\n", ob->num_hits, ob->path);
+	}
+}
+
 static int
-show_one_report(const char *path)
+show_one_report(sc_report_t *report, const char *path)
 {
 	sc_object_entry_t *entry;
 	sc_coverage_t *coverage;
@@ -515,6 +584,11 @@ show_one_report(const char *path)
 		return -1;
 	}
 
+	if (entry->mode == SC_MODE_TOUCH) {
+		sc_report_add_touched_object(report, entry);
+		return 0;
+	}
+
 	if (opt_details & SC_DETAIL_SOURCELINES)
 		flags |= SC_COVERAGE_SOURCE;
 
@@ -523,6 +597,7 @@ show_one_report(const char *path)
 		return -1;
 
 	printf("%s\n", entry->path);
+	printf("Mode:             %u\n", entry->mode);
 	printf("ELF text section: %08lx-%08lx\n",
 			coverage->text_offset,
 			coverage->text_offset + coverage->text_size);
@@ -590,14 +665,18 @@ show_one_report(const char *path)
 static void
 do_report(int nfiles, char **files)
 {
+	sc_report_t *report;
 	int i, okay = 1;
 
+	report = sc_report_alloc(opt_details);
 	for (i = 0; i < nfiles; ++i) {
 		const char *path = files[i];
 
-		if (show_one_report(path) < 0)
+		if (show_one_report(report, path) < 0)
 			okay = 0;
 	}
+
+	sc_report_trailer(report);
 
 	if (!okay)
 		exit(1);

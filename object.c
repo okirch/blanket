@@ -95,20 +95,18 @@ sc_object_entry_free(sc_object_entry_t *entry)
 static int
 sc_object_entry_open_write(const sc_object_entry_t *entry)
 {
-	static int pid_wraparound = 0;
-	static pid_t last_pid = 0;
-	char namebuf[256];
+	char namebase[256], namebuf[256], *s;
 	time_t now = time(NULL);
 	pid_t pid = getpid();
 
-	if (pid < last_pid)
-		pid_wraparound += 1;
-	last_pid = pid;
+	if (entry->test_id) {
+		snprintf(namebase, sizeof(namebase), "coverage-%s-%04x:%08lx",
+				entry->test_id, entry->dev, (long) entry->ino);
+		while ((s = strchr(namebase, '/')) != NULL)
+			*s = '_';
+	}
 
-	snprintf(namebuf, sizeof(namebuf), "/tmp/coverage-%04x:%08lx-%d:%ld-%lu.map",
-			entry->dev, (long) entry->ino,
-			pid_wraparound, (long) pid,
-			(long) now);
+	snprintf(namebuf, sizeof(namebuf), "/tmp/%s-%ld-%lu.map", namebase, (long) pid, (long) now);
 
 	return open(namebuf, O_CREAT|O_RDWR|O_EXCL, 0600);
 }
@@ -140,9 +138,11 @@ sc_object_entry_map_write(sc_object_entry_t *entry)
 	if (entry->map_base == NULL)
 		return NULL;
 
-	entry->counters = (uint32_t *) (entry->map_base + SC_OUTPUT_HEADER_SIZE);
+	if (entry->mode != SC_MODE_TOUCH) {
+		entry->counters = (uint32_t *) (entry->map_base + SC_OUTPUT_HEADER_SIZE);
+		entry->num_counters = num_counters;
+	}
 	entry->map_len = map_len;
-	entry->num_counters = num_counters;
 
 	sc_object_entry_populate_header(entry);
 

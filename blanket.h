@@ -25,6 +25,7 @@
 typedef struct sc_ptrace_region		sc_ptrace_region_t;
 
 enum {
+	SC_MODE_TOUCH,
 	SC_MODE_TIMER,
 	SC_MODE_MCOUNT,
 	SC_MODE_PTRACE,

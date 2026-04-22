@@ -36,6 +36,10 @@ sc_sampling_enable(const sc_context_t *ctx)
 	sc_sampling_enabled = sc_context_get_mode(ctx);
 
 	switch (sc_context_get_mode(ctx)) {
+	case SC_MODE_TOUCH:
+		/* nothing to be done */
+		break;
+
 	case SC_MODE_TIMER:
 		if ((sc_sampling_interval = sc_context_get_sampling_interval(ctx)) == 0)
 			sc_sampling_interval = SC_DEFAULT_SAMPLING_INTERVAL;
