@@ -36,8 +36,9 @@ found=$TMPDIR/found
 done
 
 if [ -e $found ]; then
-	echo "Good, it seems we detected coverage elapsed()"
+	echo "PASS: it seems we detected coverage elapsed()"
 else
-	echo "Did not detect coverage of elapsed()"
+	echo "FAIL: Did not detect coverage of elapsed()"
+	exit 1
 fi
 

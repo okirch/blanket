@@ -37,7 +37,8 @@ found=$TMPDIR/found
 done
 
 if [ -e $found ]; then
-	echo "Good, it seems we detected coverage of both threads"
+	echo "PASS: it seems we detected coverage of both threads"
 else
-	echo "Did not detect coverage of sqrt"
+	echo "FAIL: Did not detect coverage of sqrt"
+	exit 1
 fi

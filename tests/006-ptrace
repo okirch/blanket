@@ -42,7 +42,8 @@ echo 0 > $found
 
 count=$(cat $found)
 if [ $count -gt 5 ]; then
-	echo "Good, it seems we detected coverage of $count lines"
+	echo "PASS: it seems we detected coverage of $count lines"
 else
-	echo "Did not detect sufficient coverage"
+	echo "FAIL: Did not detect sufficient coverage"
+	exit 1
 fi

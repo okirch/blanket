@@ -25,6 +25,6 @@ echo "*** report"
 echo
 
 case $slept in
-1*)	echo "Good, it seems we did not interrupt the sleep() system call";;
-*)	echo "Ouch, it seems sampling interferes with the sleep() system call";;
+1*)	echo "PASS: it seems we did not interrupt the sleep() system call";;
+*)	echo "FAIL: ouch, it seems sampling interferes with the sleep() system call"; exit 1;;
 esac
