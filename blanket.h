@@ -171,8 +171,6 @@ typedef struct {
 
 struct sc_elf_object;
 
-typedef struct sc_dwarf_searchctx sc_dwarf_searchctx_t;
-
 /* Either use the default path, or have user override via env var. */
 extern const char *		sc_control_path;
 
@@ -214,9 +212,6 @@ extern void			sc_coverage_free(sc_coverage_t *);
 extern sc_source_file_t *	sc_coverage_add_source_file(sc_coverage_t *, unsigned int, const char *);
 extern void			sc_source_file_add_line_hit(sc_source_file_t *sf, unsigned int lineno);
 extern void			sc_dwarf_dump(const char *path);
-extern sc_dwarf_searchctx_t *	sc_dwarf_search_create(const char *filename, const char *function);
-extern void			sc_dwarf_search_free(sc_dwarf_searchctx_t *);
-extern void			sc_dwarf_inspect(const char *path, sc_dwarf_searchctx_t *search);
 extern void			sc_dwarf_extract_coverage(const sc_object_entry_t *entry, sc_coverage_t *coverage);
 
 /* Functions related to reporting */

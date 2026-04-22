@@ -21,8 +21,6 @@ struct sc_dwarf_searchctx {
 };
 
 typedef struct sc_dwarf_cu_ctx {
-	sc_dwarf_searchctx_t *	search;
-
 	uint8_t			unit_num;
 	uint8_t			unit_type;
 
@@ -98,14 +96,13 @@ failed:
 }
 
 static sc_dwarf_cu_ctx_t *
-sc_dwarf_next_cu(sc_dwarf_iterator_t *iter, sc_dwarf_searchctx_t *search)
+sc_dwarf_next_cu(sc_dwarf_iterator_t *iter)
 {
 	sc_dwarf_cu_ctx_t *ctx;
 
 	sc_dwarf_iterator_drop_cu(iter);
 
 	ctx = calloc(1, sizeof(*ctx));
-	ctx->search = search;
 
 	if (dwarf_get_units(iter->dbg, iter->cu, &iter->cu, 0, 0, 0, 0) != 0)
 		goto failed;
@@ -148,107 +145,6 @@ sc_dwarf_cu_get_source_file(sc_dwarf_cu_ctx_t *cu, const sc_dwarf_symbol_t *sym,
 	return file;
 }
 
-sc_dwarf_searchctx_t *
-sc_dwarf_search_create(const char *filename, const char *function)
-{
-	sc_dwarf_searchctx_t *search;
-
-	search = calloc(1, sizeof(*search));
-	if (filename)
-		search->filename = strdup(filename);
-	if (function)
-		search->function = strdup(function);
-
-	return search;
-}
-
-void
-sc_dwarf_search_free(sc_dwarf_searchctx_t *search)
-{
-	if (search->filename)
-		free(search->filename);
-	if (search->function)
-		free(search->function);
-	free(search);
-}
-
-static bool
-sc_dwarf_search_match_file(sc_dwarf_searchctx_t *search, sc_dwarf_cu_ctx_t *cu)
-{
-	unsigned int i;
-	const char *name;
-
-	search->file_index = -1;
-	if (search->filename == NULL)
-		return true;
-
-	search->file_index = 0;
-
-	/* First, get the name attribute and check whether it matches what the
-	 * user is looking for. */
-	if ((name = dwarf_diename(&cu->die)) == NULL)
-		return false;
-
-	if (search->filename != NULL
-	 && strcmp(name, search->filename))
-		return false;
-
-	/* Now get the file index of the CU main file. Most of the time this
-	 * will probably be at index 1. */
-	for (i = 1; i < cu->nfiles; ++i) {
-		const char *path = dwarf_filesrc(cu->files, i, NULL, NULL);
-		const char *slash;
-
-		if ((slash = strrchr(path, '/')) != NULL)
-			path = slash + 1;
-
-		if (!strcmp(path, name)) {
-			search->file_index = i;
-			return true;
-		}
-	}
-
-	return false;
-}
-
-static bool
-sc_dwarf_search_locate_function(sc_dwarf_searchctx_t *search, sc_dwarf_cu_ctx_t *cu)
-{
-	Dwarf_Die child, *try = NULL;
-	Dwarf_Attribute attr;
-	Dwarf_Addr low_pc;
-	Dwarf_Word high_pc;
-	int s;
-
-	search->start_addr = 0;
-	search->end_addr = 0;
-
-	if (search->function == NULL) {
-		try = &cu->die;
-	} else {
-		for (s = dwarf_child(&cu->die, &child); s == 0; s = dwarf_siblingof(&child, &child)) {
-			const char *name = dwarf_diename(&child);
-
-			if (name && !strcmp(name, search->function)) {
-				try = &child;
-				break;
-			}
-		}
-	}
-
-	if (try == NULL)
-		return false;
-
-	if (dwarf_formaddr(dwarf_attr(try, DW_AT_low_pc, &attr), &low_pc) == 0
-	 && dwarf_formudata(dwarf_attr(try, DW_AT_high_pc, &attr), &high_pc) == 0) {
-		search->start_addr = low_pc;
-		search->end_addr = low_pc + high_pc;
-		return true;
-	}
-
-	return false;
-}
-
 static const sc_dwarf_symbol_t *
 sc_dwarf_cu_find_function(sc_dwarf_cu_ctx_t *cu, unsigned long addr)
 {
@@ -283,50 +179,6 @@ sc_dwarf_cu_find_function(sc_dwarf_cu_ctx_t *cu, unsigned long addr)
 	return NULL;
 }
 
-static bool
-sc_dwarf_search_match_addr(sc_dwarf_searchctx_t *search, Dwarf_Addr lineaddr)
-{
-	return search->start_addr <= lineaddr && lineaddr < search->end_addr;
-}
-
-void
-sc_dwarf_inspect(const char *path, sc_dwarf_searchctx_t *search)
-{
-	sc_dwarf_iterator_t *iter;
-	sc_dwarf_cu_ctx_t *cu;
-
-	if ((iter = sc_dwarf_open(path)) == NULL)
-		return;
-
-	while ((cu = sc_dwarf_next_cu(iter, search)) != NULL) {
-		unsigned int i;
-
-		if (!sc_dwarf_search_match_file(search, cu)
-		 || !sc_dwarf_search_locate_function(search, cu))
-			continue;
-
-		printf("CU #%u %s range %08lx-%08lx\n",
-				cu->unit_num, dwarf_diename(&cu->die),
-				search->start_addr,
-				search->end_addr);
-
-		for (i = 1; i < cu->nlines; ++i) {
-			Dwarf_Line *l = dwarf_onesrcline(cu->lines, i);
-			Dwarf_Addr lineaddr;
-			int lineno;
-
-			/* This is somewhat crude. We will replace it with something better once we
-			 * have proper sampling data. */
-			if (dwarf_lineno(l, &lineno) == 0
-			 && dwarf_lineaddr(l, &lineaddr) == 0
-			 && sc_dwarf_search_match_addr(search, lineaddr))
-				printf("  line %u %u %p\n", i, lineno, (caddr_t) lineaddr);
-		}
-	}
-
-	sc_dwarf_iterator_free(iter);
-}
-
 void
 sc_dwarf_extract_coverage(const sc_object_entry_t *entry, sc_coverage_t *coverage)
 {
@@ -336,7 +188,7 @@ sc_dwarf_extract_coverage(const sc_object_entry_t *entry, sc_coverage_t *coverag
 	if ((iter = sc_dwarf_open(entry->path)) == NULL)
 		return;
 
-	while ((cu = sc_dwarf_next_cu(iter, NULL)) != NULL) {
+	while ((cu = sc_dwarf_next_cu(iter)) != NULL) {
 		unsigned long addr = 0;
 		sc_source_file_t *source_file = NULL;
 
@@ -545,7 +397,7 @@ sc_dwarf_dump(const char *path)
 	if ((iter = sc_dwarf_open(path)) == NULL)
 		return;
 
-	while ((cu = sc_dwarf_next_cu(iter, NULL)) != NULL) {
+	while ((cu = sc_dwarf_next_cu(iter)) != NULL) {
 		unsigned int i;
 
 		printf("CU #%u type %d %s\n", cu->unit_num, cu->unit_type, dwarf_diename(&cu->die));
