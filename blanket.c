@@ -345,6 +345,46 @@ do_show(void)
 	}
 }
 
+/*
+ * source file coverage reporting.
+ * We have a simple mode, where we just print line numbers, and an annotated
+ * mode where we display the source code itself.
+ */
+typedef struct sc_source_renderer {
+	sc_source_file_t *	file;
+	unsigned int		context_lines;
+	int			last_line;
+	FILE *			fp;
+
+	void			(*open)(struct sc_source_renderer *, sc_source_file_t *);
+	void			(*line_hit)(struct sc_source_renderer *, unsigned int line);
+	void			(*close)(struct sc_source_renderer *);
+} sc_source_renderer_t;
+
+static void
+simple_source_renderer_open(sc_source_renderer_t *r, sc_source_file_t *f)
+{
+	printf("%s\n", f->filename);
+}
+
+static void
+simple_source_renderer_line_hit(sc_source_renderer_t *r, unsigned int line)
+{
+	printf("  %u\n", line);
+}
+
+static void
+simple_source_renderer_close(sc_source_renderer_t *r)
+{
+	/* NOP */
+}
+
+static sc_source_renderer_t	simple_source_renderer = {
+	.open = simple_source_renderer_open,
+	.line_hit = simple_source_renderer_line_hit,
+	.close = simple_source_renderer_close,
+};
+
 static int
 show_one_report(const char *path)
 {
@@ -398,22 +438,25 @@ show_one_report(const char *path)
 	}
 
 	if (opt_details & SC_DETAIL_SOURCELINES) {
+		sc_source_renderer_t *renderer = &simple_source_renderer;
 		unsigned int i, j;
 
 		printf("Source files and their coverage:\n");
+		simple_source_renderer.file = NULL;
 		for (i = 0; i < coverage->nsourcefiles; ++i) {
 			sc_source_file_t *file = &coverage->sourcefiles[i];
 
-			printf("%s\n", file->filename);
+			renderer->open(renderer, file);
 			for (j = 0; j < file->nwords; ++j) {
 				uint32_t word = file->linemap[j], mask;
 				unsigned int line = 32 * j;
 
 				for (mask = 1; mask; mask <<= 1, ++line) {
 					if (word & mask)
-						printf("  %u\n", line);
+						renderer->line_hit(renderer, line);
 				}
 			}
+			renderer->close(renderer);
 		}
 	}
 
