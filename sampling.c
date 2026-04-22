@@ -183,6 +183,7 @@ typedef struct sc_ptrace_function {
 
 typedef struct sc_ptrace {
 	pid_t			child_pid;
+	int			exit_status;
 
 	int			debug_enabled;
 
@@ -214,6 +215,7 @@ sc_ptrace_get_context(void)
 
 	handle = calloc(1, sizeof(*handle));
 
+	handle->exit_status = -1;
 	handle->word_size = sizeof(long);
 	handle->break_ins = 0xCC; /* hard-code for now */
 	return handle;
@@ -440,6 +442,10 @@ sc_ptrace_start(void)
 		if (WIFEXITED(status)) {
 			if (sc_ptrace_debug(ctx))
 				printf("pid exited status=%d\n", WEXITSTATUS(status));
+			if (pid == ctx->child_pid) {
+				ctx->exit_status = WEXITSTATUS(status);
+				ctx->child_pid = 0;
+			}
 			continue;
 		}
 		if (WIFSIGNALED(status)) {
@@ -512,7 +518,10 @@ release:
 			printf("should be running again...\n");
 	}
 
-	return 0;
+	if (ctx->child_pid)
+		waitpid(ctx->child_pid, NULL, 0);
+
+	exit(ctx->exit_status);
 }
 
 int
