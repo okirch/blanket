@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <term.h>
 #include "blanket.h"
 
 static void		do_init(void);
@@ -28,12 +29,13 @@ static int		opt_mode = -1;
 enum {
 	SC_DETAIL_SYMBOLS	= 0x0001,
 	SC_DETAIL_SOURCELINES	= 0x0002,
+	SC_DETAIL_ANNOTATE	= 0x0004,
 	SC_DETAIL_NONE		= 0xFFFF,
 };
 static int		opt_details = 0;
 
 enum {
-	OPT_SYMBOLS, OPT_SOURCELINES, OPT_NO_DETAILS,
+	OPT_SYMBOLS, OPT_SOURCELINES, OPT_ANNOTATE, OPT_NO_DETAILS,
 };
 
 static struct option	long_options[] = {
@@ -44,6 +46,7 @@ static struct option	long_options[] = {
 	{ "sampling-interval",	required_argument,	NULL,	'S' },
 	{ "symbols",		no_argument,		NULL,	OPT_SYMBOLS },
 	{ "sourcelines",	no_argument,		NULL,	OPT_SOURCELINES },
+	{ "annotate",		no_argument,		NULL,	OPT_ANNOTATE },
 	{ "no-details",		no_argument,		NULL,	OPT_NO_DETAILS },
 	{ "test-id",		required_argument,	NULL,	'T' },
 	{ "help",		no_argument,		NULL,	'h' },
@@ -91,6 +94,10 @@ main(int argc, char **argv)
 
 		case OPT_SOURCELINES:
 			opt_details |= SC_DETAIL_SOURCELINES;
+			break;
+
+		case OPT_ANNOTATE:
+			opt_details |= SC_DETAIL_SOURCELINES | SC_DETAIL_ANNOTATE;
 			break;
 
 		case OPT_NO_DETAILS:
@@ -353,8 +360,12 @@ do_show(void)
 typedef struct sc_source_renderer {
 	sc_source_file_t *	file;
 	unsigned int		context_lines;
-	int			last_line;
+	unsigned int		last_line;
 	FILE *			fp;
+
+	bool			terminfo_initialized;
+	char *			smso;
+	char *			rmso;
 
 	void			(*open)(struct sc_source_renderer *, sc_source_file_t *);
 	void			(*line_hit)(struct sc_source_renderer *, unsigned int line);
@@ -383,6 +394,112 @@ static sc_source_renderer_t	simple_source_renderer = {
 	.open = simple_source_renderer_open,
 	.line_hit = simple_source_renderer_line_hit,
 	.close = simple_source_renderer_close,
+};
+
+static void
+annotated_source_renderer_open(sc_source_renderer_t *r, sc_source_file_t *f)
+{
+	printf("%s\n", f->filename);
+
+	r->fp = fopen(f->filename, "r");
+	if (r->fp == NULL)
+		printf("  Warning: cannot open source file: %m\n");
+	r->last_line = 0;
+
+	if (!r->terminfo_initialized) {
+		int err;
+
+		r->terminfo_initialized = true;
+
+		if (isatty(fileno(stdout)) && setupterm(NULL, fileno(stdout), &err) >= 0) {
+			r->smso = tigetstr("bold");
+			r->rmso = tigetstr("sgr0");
+		}
+		if (r->smso == NULL || r->rmso == NULL)
+			r->smso = r->rmso = NULL;
+	}
+}
+
+static void
+annotated_source_renderer_line_hit(sc_source_renderer_t *r, unsigned int line)
+{
+	char linebuf[512];
+	unsigned int header = 0, trailer = 0, gap = 0;
+
+	if (r->fp == NULL) {
+print_simple:
+		printf("  %u\n", line);
+		return;
+	}
+
+	if (line <= r->last_line)
+		return;
+
+	if (r->last_line != 0)
+		trailer = r->last_line + r->context_lines;
+	if (line > r->context_lines)
+		header = line - r->context_lines;
+
+	while (r->last_line < line) {
+		if (fgets(linebuf, sizeof(linebuf), r->fp) == 0) {
+			printf("(premature end of file)\n");
+			fclose(r->fp);
+			r->fp = NULL;
+			goto print_simple;
+		}
+
+		linebuf[strcspn(linebuf, "\n")] = '\0';
+
+		r->last_line += 1;
+
+		if (r->last_line == line) {
+			if (r->smso)
+				putp(r->smso);
+			printf(" + %s\n", linebuf);
+			if (r->rmso)
+				putp(r->rmso);
+		} else
+		if (header <= r->last_line) {
+			if (gap) {
+				printf("--- line %u: ---\n", header);
+				gap = 0;
+			}
+			printf("   %s\n", linebuf);
+		} else
+		if (r->last_line < trailer) {
+			printf("   %s\n", linebuf);
+		} else {
+			gap = 1;
+		}
+	}
+}
+
+static void
+annotated_source_renderer_close(sc_source_renderer_t *r)
+{
+	if (r->fp) {
+		if (r->last_line > 0) {
+			char linebuf[512];
+			unsigned int k;
+
+			for (k = 0; k < r->context_lines; ++k) {
+				if (fgets(linebuf, sizeof(linebuf), r->fp) == 0)
+					break;
+				linebuf[strcspn(linebuf, "\n")] = '\0';
+				printf("   %s\n", linebuf);
+			}
+		}
+
+		fclose(r->fp);
+		r->fp = NULL;
+	}
+}
+
+static sc_source_renderer_t	annotated_source_renderer = {
+	.context_lines = 3,
+	.open = annotated_source_renderer_open,
+	.line_hit = annotated_source_renderer_line_hit,
+	.close = annotated_source_renderer_close,
 };
 
 static int
@@ -440,6 +557,9 @@ show_one_report(const char *path)
 	if (opt_details & SC_DETAIL_SOURCELINES) {
 		sc_source_renderer_t *renderer = &simple_source_renderer;
 		unsigned int i, j;
+
+		if (opt_details & SC_DETAIL_ANNOTATE)
+			renderer = &annotated_source_renderer;
 
 		printf("Source files and their coverage:\n");
 		simple_source_renderer.file = NULL;

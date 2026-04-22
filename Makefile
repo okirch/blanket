@@ -1,7 +1,7 @@
 
 CFLAGS	= -Wall -g -fPIC -D_GNU_SOURCE
 LDFLAGS	= -shared -Wl,-soname -Wl,libblanket.so.0
-LIBS	= -ldw -lelf -ldl
+LIBS	= -ldw -lelf -ldl -lncurses
 
 LIBOBJS	= context.o control.o object.o sampling.o kernel.o hooks.o
 
