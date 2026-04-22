@@ -16,7 +16,7 @@ echo
 echo "*** running test command"
 rm -f /tmp/coverage-*
 export LD_PRELOAD=$PWD/libblanket.so
-slept=$(/usr/bin/time -f %e sleep 1)
+slept=$(/usr/bin/time -f %e sleep 1 2>&1)
 echo "*** command slept for $slept seconds"
 echo
 
